@@ -547,7 +547,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let mediaContent = '';
         if (fileUrl) {
             if (fileType && fileType.startsWith('image/')) {
-                mediaContent = `<div class="message-media"><img src="${fileUrl}" alt="Uploaded Image" style="max-width: 100%; border-radius: 8px; margin-top: 8px; cursor: pointer;" onclick="window.open('${fileUrl}', '_blank')"></div>`;
+                mediaContent = `
+                    <div class="message-media" style="margin-top: 10px;">
+                        <img src="${fileUrl}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: var(--shadow-md); display: block;">
+                        <button onclick="downloadMedia('${fileUrl}', 'ai-image-${Date.now()}.png')" class="msg-action-btn" style="margin-top: 12px; background: var(--accent-gradient); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                            <i class="fa-solid fa-download"></i> Download Image
+                        </button>
+                    </div>`;
             } else {
                 mediaContent = `<div class="message-media" style="margin-top: 8px;">
                     <a href="${fileUrl}" target="_blank" style="display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: 8px; text-decoration: none; color: var(--text-primary); border: 1px solid var(--border-color);">
@@ -689,4 +695,26 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebar.classList.remove('open');
         sidebarOverlay.classList.remove('active');
     });
+
+    // Global helper for downloading media (especially cross-origin images)
+    window.downloadMedia = async (url, filename) => {
+        try {
+            showToast("Starting download...", "info");
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+            showToast("Download complete!", "success");
+        } catch (error) {
+            console.error("Download failed:", error);
+            showToast("Download failed. Opening in new tab...", "error");
+            window.open(url, '_blank');
+        }
+    };
 });
