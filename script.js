@@ -388,12 +388,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleImageGeneration(prompt, skeletonDiv) {
         try {
             // Clean the prompt to remove "generate an image of" etc.
-            const cleanPrompt = prompt.replace(/generate an image of|generate image of|draw a picture of|draw a|create a picture of|create an image of/gi, '').trim();
+            let cleanPrompt = prompt.replace(/generate an image of|generate image of|draw a picture of|draw a|create a picture of|create an image of/gi, '').trim();
             
+            // Add Ultra-High Quality keywords (4k, 8k, realistic)
+            const qualityKeywords = "ultra-realistic, 8k resolution, highly detailed, masterpiece, cinematic lighting, 4k, professional photography";
+            const enhancedPrompt = `${cleanPrompt}, ${qualityKeywords}`;
+
             // Using Pollinations Image API (reliable, free, no CORS issues)
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1280&height=1280&nologo=true&enhance=true&seed=${Math.floor(Math.random() * 1000000)}`;
             
-            // Wait for image to "load" conceptually (Pollinations is fast)
+            // Wait for image to "load" conceptually
             const img = new Image();
             img.src = imageUrl;
             
