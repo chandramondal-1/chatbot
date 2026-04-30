@@ -390,12 +390,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clean the prompt to remove "generate an image of" etc.
             let cleanPrompt = prompt.replace(/generate an image of|generate image of|draw a picture of|draw a|create a picture of|create an image of/gi, '').trim();
             
-            // Add Ultra-High Quality keywords (4k, 8k, realistic)
-            const qualityKeywords = "ultra-realistic, 8k resolution, highly detailed, masterpiece, cinematic lighting, 4k, professional photography";
-            const enhancedPrompt = `${cleanPrompt}, ${qualityKeywords}`;
+            // Imagineo-4K Style Prompt Engineering (Hyper-Realistic 4K/8K)
+            const imagineoStyle = "hyper-realistic, ultra-detailed, lifelike, high-resolution, sharp, vibrant colors, photorealistic, cinematic lighting, masterpiece, 4k, 8k, sharp focus, volumetric lighting";
+            const enhancedPrompt = `${cleanPrompt}. ${imagineoStyle}`;
 
-            // Using Pollinations Image API (reliable, free, no CORS issues)
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1280&height=1280&nologo=true&enhance=true&seed=${Math.floor(Math.random() * 1000000)}`;
+            // Using Pollinations Image API with Imagineo-inspired parameters
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1280&height=1280&nologo=true&enhance=true&model=flux&seed=${Math.floor(Math.random() * 1000000)}`;
             
             // Wait for image to "load" conceptually
             const img = new Image();
