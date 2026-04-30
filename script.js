@@ -51,6 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const voiceBtn = document.getElementById('voice-btn');
+    const inputWrapper = document.querySelector('.input-wrapper');
+    const toastContainer = document.getElementById('toast-container');
     const modelSelect = document.querySelector('.model-selector select');
     
     // Auth Elements
@@ -383,6 +386,88 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI Helpers ---
+    // --- Advanced Features ---
+
+    // 1. Voice Input (Speech to Text)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        voiceBtn.addEventListener('click', () => {
+            if (voiceBtn.classList.contains('listening')) {
+                recognition.stop();
+            } else {
+                recognition.start();
+                voiceBtn.classList.add('listening');
+                showToast("Listening...", "info");
+            }
+        });
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            chatInput.value = transcript;
+            voiceBtn.classList.remove('listening');
+            sendMessage();
+        };
+
+        recognition.onerror = () => {
+            voiceBtn.classList.remove('listening');
+            showToast("Speech recognition failed.", "error");
+        };
+
+        recognition.onend = () => {
+            voiceBtn.classList.remove('listening');
+        };
+    } else {
+        voiceBtn.style.display = 'none';
+    }
+
+    // 2. Voice Output (Text to Speech)
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // 3. Toast Notifications
+    function showToast(message, type = "success") {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-info'}"></i><span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // 4. Drag and Drop
+    inputWrapper.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        inputWrapper.classList.add('drag-over');
+    });
+
+    inputWrapper.addEventListener('dragleave', () => {
+        inputWrapper.classList.remove('drag-over');
+    });
+
+    inputWrapper.addEventListener('drop', (e) => {
+        e.preventDefault();
+        inputWrapper.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file) handleFileUpload(file);
+    });
+
+    // 5. Reactions Logic
+    function handleReaction(btn, type) {
+        const parent = btn.parentElement;
+        parent.querySelectorAll('.msg-action-btn').forEach(b => b.style.color = '');
+        btn.style.color = type === 'up' ? '#10a37f' : '#ff4d4d';
+        showToast(`Feedback saved!`, "success");
+    }
+
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, fileType = null) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
@@ -423,21 +508,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="avatar ${sender}">${avatarContent}</div>
                 <div class="message-body">
                     <div class="message-header">
-                        <span class="sender-name">${senderName}</span>
-                        <span class="message-time">${timeStr}</span>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="sender-name">${senderName}</span>
+                            <span class="message-time">${timeStr}</span>
+                        </div>
+                        ${!isSkeleton && sender === 'bot' ? `
+                            <button class="msg-action-btn speak-btn" title="Listen"><i class="fa-solid fa-volume-high"></i></button>
+                        ` : ''}
                     </div>
                     <div class="message-text">
                         ${isSkeleton ? `
-                            <div class="skeleton-loader">
-                                <div class="skeleton-line medium"></div>
-                                <div class="skeleton-line"></div>
-                            </div>
+                            <div class="skeleton-line short"></div>
+                            <div class="skeleton-line medium"></div>
+                            <div class="skeleton-line"></div>
                         ` : formatText(text)}
                     </div>
                     ${mediaContent}
                     ${!isSkeleton && sender === 'bot' ? `
                         <div class="message-actions">
-                            <button class="msg-action-btn copy-btn" title="Copy"><i class="fa-regular fa-copy"></i></button>
+                            <div class="reaction-group">
+                                <button class="msg-action-btn thumb-up" title="Helpful"><i class="fa-regular fa-thumbs-up"></i></button>
+                                <button class="msg-action-btn thumb-down" title="Not helpful"><i class="fa-regular fa-thumbs-down"></i></button>
+                            </div>
+                            <button class="msg-action-btn copy-btn" title="Copy"><i class="fa-regular fa-copy"></i> Copy</button>
                         </div>
                     ` : ''}
                 </div>
@@ -450,49 +543,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const copyBtn = messageDiv.querySelector('.copy-btn');
             copyBtn.addEventListener('click', () => {
                 navigator.clipboard.writeText(text);
-                copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
-                setTimeout(() => copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>', 2000);
+                copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+                showToast("Copied to clipboard!");
+                setTimeout(() => copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy', 2000);
             });
+
+            const speakBtn = messageDiv.querySelector('.speak-btn');
+            speakBtn.addEventListener('click', () => speak(text));
+
+            const upBtn = messageDiv.querySelector('.thumb-up');
+            const downBtn = messageDiv.querySelector('.thumb-down');
+            upBtn.addEventListener('click', () => handleReaction(upBtn, 'up'));
+            downBtn.addEventListener('click', () => handleReaction(downBtn, 'down'));
+            
+            Prism.highlightAllUnder(messageDiv);
         }
         
         return messageDiv;
     }
 
     function formatText(text) {
-        // 1. Handle code blocks first and store them in a temporary array
-        const codeBlocks = [];
-        let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
-            const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
-            codeBlocks.push(`
-                <div class="code-block-wrapper">
-                    <div class="code-header">
-                        <span>${lang || 'code'}</span>
-                        <button class="copy-code-btn" onclick="copyCode(this)">
-                            <i class="fa-regular fa-copy"></i> Copy
-                        </button>
-                    </div>
-                    <pre><code class="language-${lang}">${escapeHTML(code.trim())}</code></pre>
-                </div>
-            `);
-            return placeholder;
-        });
-
-        // 2. Handle bold and italic
-        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-        // 3. Handle paragraphs (split by double newlines)
-        html = html.split('\n\n').map(p => {
-            if (p.startsWith('__CODE_BLOCK_')) return p;
-            return `<p>${p.replace(/\n/g, '<br>')}</p>`;
-        }).join('');
-
-        // 4. Put the code blocks back
-        codeBlocks.forEach((block, index) => {
-            html = html.replace(`__CODE_BLOCK_${index}__`, block);
-        });
-
-        return html;
+        if (typeof marked !== 'undefined') {
+            return marked.parse(text);
+        }
+        // Fallback if marked is not loaded
+        return text.replace(/\n/g, '<br>');
     }
 
     function escapeHTML(str) {

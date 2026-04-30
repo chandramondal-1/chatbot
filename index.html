@@ -8,7 +8,14 @@
     <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Prism.js for Syntax Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -118,10 +125,14 @@
                         <i class="fa-solid fa-paperclip"></i>
                     </button>
                     <textarea id="chat-input" placeholder="Message AI..." rows="1" autofocus></textarea>
+                    <button class="voice-btn" id="voice-btn" title="Voice input">
+                        <i class="fa-solid fa-microphone"></i>
+                    </button>
                     <button class="send-btn" id="send-btn" title="Send message">
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
                 </div>
+                <div id="toast-container"></div>
                 <div class="footer-text">
                     AI can make mistakes. Consider verifying important information.
                 </div>
