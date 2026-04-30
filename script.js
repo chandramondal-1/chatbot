@@ -390,6 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
             skeletonDiv.remove();
             appendMessage('bot', "Sorry, I'm having trouble connecting to the AI service. Please check your connection.");
         }
+        sendBtn.removeAttribute('disabled');
         scrollToBottom();
     }
 
@@ -423,6 +424,7 @@ document.addEventListener('DOMContentLoaded', () => {
             skeletonDiv.remove();
             appendMessage('bot', "Sorry, I couldn't generate that voice note.");
         }
+        sendBtn.removeAttribute('disabled');
     }
 
     async function handleImageGeneration(prompt, skeletonDiv) {
@@ -453,9 +455,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const replyText = `Here is the image I generated for: **${cleanPrompt}**`;
                 await saveMessageToDB('bot', replyText, imageUrl, 'image/png');
                 showToast("Image generated successfully!");
+                sendBtn.removeAttribute('disabled');
             };
             
             img.onerror = () => {
+                sendBtn.removeAttribute('disabled');
                 throw new Error("Image failed to load");
             };
 
@@ -463,6 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Image Gen Error:", error);
             skeletonDiv.remove();
             appendMessage('bot', "Sorry, I couldn't generate that image right now.");
+            sendBtn.removeAttribute('disabled');
         }
     }
 
