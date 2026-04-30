@@ -294,7 +294,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Model Routing Logic (Always Auto) ---
         const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
+        const imageKeywords = ['generate an image', 'generate image', 'draw a', 'create a picture', 'create an image', 'show me a picture', 'make an image'];
+        
         const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
+        const isImage = imageKeywords.some(keyword => userText.toLowerCase().includes(keyword));
+
+        if (isImage) {
+            handleImageGeneration(userText, skeletonDiv);
+            return;
+        }
+
         const finalModel = isCoding ? 'deepseek' : 'nvidia';
 
         try {
@@ -365,6 +374,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         scrollToBottom();
+    }
+
+    async function handleImageGeneration(prompt, skeletonDiv) {
+        try {
+            // Clean the prompt to remove "generate an image of" etc.
+            const cleanPrompt = prompt.replace(/generate an image of|generate image of|draw a picture of|draw a|create a picture of|create an image of/gi, '').trim();
+            
+            // Using Pollinations Image API (reliable, free, no CORS issues)
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cleanPrompt)}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+            
+            // Wait for image to "load" conceptually (Pollinations is fast)
+            const img = new Image();
+            img.src = imageUrl;
+            
+            img.onload = async () => {
+                skeletonDiv.remove();
+                const replyText = `Here is the image I generated for: **${cleanPrompt}**`;
+                await saveMessageToDB('bot', replyText, imageUrl, 'image/png');
+                showToast("Image generated successfully!");
+            };
+            
+            img.onerror = () => {
+                throw new Error("Image failed to load");
+            };
+
+        } catch (error) {
+            console.error("Image Gen Error:", error);
+            skeletonDiv.remove();
+            appendMessage('bot', "Sorry, I couldn't generate that image right now.");
+        }
     }
 
     async function saveMessageToDB(sender, text, fileUrl = null, fileType = null) {
