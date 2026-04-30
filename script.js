@@ -270,7 +270,13 @@ document.addEventListener('DOMContentLoaded', () => {
             skeletonDiv.remove();
             
             await saveMessageToDB('user', `Uploaded a file: ${file.name}`, downloadURL, file.type);
-            getAIResponse(`The user has uploaded a file or image: ${file.name}. Please acknowledge it.`);
+            
+            // If it's an image, use Vision capability
+            if (file.type.startsWith('image/')) {
+                getAIResponse(`I have uploaded an image: ${file.name}. Please describe it or wait for my instructions.`, downloadURL);
+            } else {
+                getAIResponse(`I have uploaded a document: ${file.name}. Please acknowledge it.`);
+            }
         } catch (error) {
             console.error("Upload error:", error);
             skeletonDiv.remove();
@@ -278,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function getAIResponse(userText) {
+    async function getAIResponse(userText, mediaUrl = null) {
         const skeletonDiv = appendMessage('bot', '', true);
         scrollToBottom();
 
@@ -286,8 +292,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let apiKey = '';
         let apiBody = { 
             messages: [
-                { role: 'system', content: 'You are a helpful assistant created by CHANDRA MONDAL.' },
-                { role: 'user', content: userText }
+                { role: 'system', content: 'You are a multimodal assistant created by CHANDRA MONDAL. You can see images if a URL is provided.' },
+                { role: 'user', content: mediaUrl ? [
+                    { type: 'text', text: userText },
+                    { type: 'image_url', image_url: { url: mediaUrl } }
+                ] : userText }
             ]
         };
         let apiHeaders = { 'Content-Type': 'application/json' };
