@@ -294,10 +294,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Model Routing Logic (Always Auto) ---
         const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
-        const imageKeywords = ['generate an image', 'generate image', 'draw a', 'create a picture', 'create an image', 'show me a picture', 'make an image'];
+        
+        // Flexible Image Detection Regex
+        const imageRegex = /(generate|create|draw|make|show|paint|sketch).*(image|picture|photo|drawing|illustration|sketch|portrait)/i;
         
         const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
-        const isImage = imageKeywords.some(keyword => userText.toLowerCase().includes(keyword));
+        const isImage = imageRegex.test(userText);
 
         if (isImage) {
             handleImageGeneration(userText, skeletonDiv);
