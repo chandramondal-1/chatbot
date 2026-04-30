@@ -18,8 +18,7 @@ const firebaseConfig = {
   appId: "1:196542676864:web:9039292a8a542cdaaf8b65"
 };
 
-// NVIDIA API Key (Moved to frontend for GitHub Pages compatibility)
-const NVIDIA_API_KEY = "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";
+// Removed API key for security (using free CORS-friendly AI now)
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -237,33 +236,36 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
 
         try {
-            // Call our own backend server to bypass CORS issues
-            const selectedModel = modelSelect.value === 'advanced' ? 'meta/llama-3.1-405b-instruct' : 'meta/llama-3.1-70b-instruct';
+            // Since this is GitHub Pages, we use a free, CORS-friendly AI API (Pollinations AI)
+            // This prevents API key leakage and bypasses CORS security blocks!
+            const selectedModel = modelSelect.value === 'advanced' ? 'gpt-4o' : 'openai';
             
-            const response = await fetch('/api/chat', {
+            const response = await fetch('https://text.pollinations.ai/', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ 
                     model: selectedModel,
-                    message: userText 
+                    messages: [
+                        { role: 'system', content: 'You are a helpful and intelligent AI assistant.' },
+                        { role: 'user', content: userText }
+                    ]
                 })
             });
 
-            const data = await response.json();
+            const replyText = await response.text();
             skeletonDiv.remove();
 
-            if (data.error) {
-                appendMessage('bot', "AI Error: " + (data.error.message || data.error));
+            if (!response.ok) {
+                appendMessage('bot', "AI Error: Something went wrong.");
             } else {
-                const reply = data.reply || data.choices?.[0]?.message?.content || "No response";
-                await saveMessageToDB('bot', reply);
+                await saveMessageToDB('bot', replyText);
             }
         } catch (error) {
             console.error("API Error:", error);
             skeletonDiv.remove();
-            appendMessage('bot', "Sorry, I'm having trouble connecting to the backend. Make sure your server is running.");
+            appendMessage('bot', "Sorry, I'm having trouble connecting to the AI. Check your internet connection.");
         }
         scrollToBottom();
     }
