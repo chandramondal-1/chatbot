@@ -18,8 +18,8 @@ const firebaseConfig = {
   appId: "1:196542676864:web:9039292a8a542cdaaf8b65"
 };
 
-// OpenRouter Key (Moved to frontend for GitHub Pages compatibility)
-const OPENROUTER_API_KEY = "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";
+// NVIDIA API Key (Moved to frontend for GitHub Pages compatibility)
+const NVIDIA_API_KEY = "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";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -237,14 +237,14 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
 
         try {
-            // Note: Since this is GitHub Pages, we call OpenRouter DIRECTLY from the frontend
-            const selectedModel = modelSelect.value === 'advanced' ? 'google/gemini-2.0-pro-exp-02-05:free' : 'google/gemini-2.0-flash-001';
+            // Note: Since this is GitHub Pages, we call the API DIRECTLY from the frontend
+            const selectedModel = modelSelect.value === 'advanced' ? 'meta/llama-3.1-405b-instruct' : 'meta/llama-3.1-70b-instruct';
             
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${OPENROUTER_API_KEY}`
+                    'Authorization': `Bearer ${NVIDIA_API_KEY}`
                 },
                 body: JSON.stringify({ 
                     model: selectedModel,
