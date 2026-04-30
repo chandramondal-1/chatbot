@@ -463,15 +463,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function formatText(text) {
-        let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
-            return `<div class="code-block-wrapper">
-                <div class="code-header"><span>${lang || 'code'}</span><button class="copy-code-btn"><i class="fa-regular fa-copy"></i> Copy</button></div>
-                <pre><code>${escapeHTML(code.trim())}</code></pre>
-            </div>`;
+        // 1. Handle code blocks first and store them in a temporary array
+        const codeBlocks = [];
+        let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+            const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
+            codeBlocks.push(`
+                <div class="code-block-wrapper">
+                    <div class="code-header">
+                        <span>${lang || 'code'}</span>
+                        <button class="copy-code-btn" onclick="copyCode(this)">
+                            <i class="fa-regular fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <pre><code class="language-${lang}">${escapeHTML(code.trim())}</code></pre>
+                </div>
+            `);
+            return placeholder;
         });
+
+        // 2. Handle bold and italic
         html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-        return html.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+
+        // 3. Handle paragraphs (split by double newlines)
+        html = html.split('\n\n').map(p => {
+            if (p.startsWith('__CODE_BLOCK_')) return p;
+            return `<p>${p.replace(/\n/g, '<br>')}</p>`;
+        }).join('');
+
+        // 4. Put the code blocks back
+        codeBlocks.forEach((block, index) => {
+            html = html.replace(`__CODE_BLOCK_${index}__`, block);
+        });
+
+        return html;
     }
 
     function escapeHTML(str) {

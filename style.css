@@ -483,6 +483,8 @@ body {
     line-height: 1.6;
     color: var(--text-primary);
     word-wrap: break-word;
+    overflow-wrap: break-word;
+    width: 100%;
 }
 
 .message-text p {
