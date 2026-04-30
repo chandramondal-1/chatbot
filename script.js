@@ -237,18 +237,17 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
 
         try {
-            // Note: Since this is GitHub Pages, we call the API DIRECTLY from the frontend
+            // Call our own backend server to bypass CORS issues
             const selectedModel = modelSelect.value === 'advanced' ? 'meta/llama-3.1-405b-instruct' : 'meta/llama-3.1-70b-instruct';
             
-            const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+            const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${NVIDIA_API_KEY}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ 
                     model: selectedModel,
-                    messages: [{ role: 'user', content: userText }]
+                    message: userText 
                 })
             });
 
@@ -258,13 +257,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.error) {
                 appendMessage('bot', "AI Error: " + (data.error.message || data.error));
             } else {
-                const reply = data.choices[0].message.content;
+                const reply = data.reply || data.choices?.[0]?.message?.content || "No response";
                 await saveMessageToDB('bot', reply);
             }
         } catch (error) {
             console.error("API Error:", error);
             skeletonDiv.remove();
-            appendMessage('bot', "Sorry, I'm having trouble connecting to the AI. Check your internet connection.");
+            appendMessage('bot', "Sorry, I'm having trouble connecting to the backend. Make sure your server is running.");
         }
         scrollToBottom();
     }
