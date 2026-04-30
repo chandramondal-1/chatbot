@@ -5,33 +5,57 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware to parse JSON bodies
 app.use(express.json());
-
-// Serve static files from the current directory
 app.use(express.static(path.join(__dirname, '/')));
 
-// Example endpoint for future API integration
+// API Endpoint for Chat
 app.post('/api/chat', async (req, res) => {
     try {
-        const { message } = req.body;
+        const { message, model } = req.body;
         
-        // TODO: Integrate OpenAI/Gemini API here
-        // const apiKey = process.env.API_KEY;
+        if (!message) {
+            return res.status(400).json({ error: "Message is required" });
+        }
+
+        // We'll use OpenRouter as the default provider since the user provided an OpenRouter key.
+        // It's the most flexible for multiple models.
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                "HTTP-Referer": "http://localhost:3000", // Optional, for OpenRouter rankings
+                "X-Title": "AI Chatbot UI", // Optional
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                "model": model || "google/gemini-2.0-flash-001", // Default model
+                "messages": [
+                    { "role": "user", "content": message }
+                ],
+            })
+        });
+
+        const data = await response.json();
         
-        // Placeholder response
-        res.json({ reply: "This is a backend response. API keys will be integrated here later!" });
+        if (data.error) {
+            console.error("OpenRouter Error:", data.error);
+            return res.status(500).json({ error: data.error.message || "AI API Error" });
+        }
+
+        const botReply = data.choices[0].message.content;
+        res.json({ reply: botReply });
+
     } catch (error) {
-        console.error("Error:", error);
-        res.status(500).json({ error: "An error occurred on the server." });
+        console.error("Server Error:", error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
 });
 
-// Fallback route to serve index.html
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    console.log(`API Keys loaded: ${process.env.OPENROUTER_API_KEY ? 'Yes' : 'No'}`);
 });

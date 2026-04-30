@@ -23,24 +23,40 @@
             
             <div class="chat-history">
                 <div class="history-label">Recent</div>
-                <ul class="history-list">
-                    <!-- History items will go here -->
+                <ul class="history-list" id="history-list">
+                    <!-- History items -->
                     <li class="history-item active">
-                        <i class="fa-regular fa-message"></i>
-                        <span>How to build a chatbot</span>
+                        <div class="history-content">
+                            <i class="fa-regular fa-message"></i>
+                            <span class="history-title">How to build a chatbot</span>
+                        </div>
+                        <div class="history-actions">
+                            <button class="action-btn" title="Rename"><i class="fa-solid fa-pen"></i></button>
+                            <button class="action-btn delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                        </div>
                     </li>
                     <li class="history-item">
-                        <i class="fa-regular fa-message"></i>
-                        <span>Explain quantum computing</span>
-                    </li>
-                    <li class="history-item">
-                        <i class="fa-regular fa-message"></i>
-                        <span>Write a poem about space</span>
+                        <div class="history-content">
+                            <i class="fa-regular fa-message"></i>
+                            <span class="history-title">Explain quantum computing</span>
+                        </div>
+                        <div class="history-actions">
+                            <button class="action-btn" title="Rename"><i class="fa-solid fa-pen"></i></button>
+                            <button class="action-btn delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                        </div>
                     </li>
                 </ul>
             </div>
 
             <div class="sidebar-footer">
+                <button class="settings-btn" id="theme-toggle">
+                    <i class="fa-solid fa-moon"></i>
+                    <span>Dark Mode</span>
+                </button>
+                <button class="settings-btn" id="auth-btn">
+                    <i class="fa-brands fa-google" id="auth-icon"></i>
+                    <span id="auth-text">Log In with Google</span>
+                </button>
                 <button class="settings-btn">
                     <i class="fa-solid fa-gear"></i>
                     <span>Settings</span>
@@ -51,6 +67,9 @@
         <!-- Main Chat Area -->
         <main class="chat-main">
             <header class="chat-header">
+                <button class="mobile-menu-btn" id="mobile-menu-btn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
                 <div class="model-selector">
                     <span>Model:</span>
                     <select>
@@ -110,8 +129,11 @@
                 </div>
             </div>
         </main>
+        
+        <!-- Mobile Overlay -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>

@@ -1,4 +1,36 @@
+// --- Firebase Modular Imports ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-auth.js";
+import { 
+    getFirestore, collection, addDoc, getDocs, query, orderBy, 
+    serverTimestamp, onSnapshot, doc, deleteDoc, setDoc, updateDoc, getDoc 
+} from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+// ==========================================
+// 🔴 FIREBASE CONFIGURATION 🔴
+// ==========================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDANJ-7C4CNHCOsrUGpZL6mN3bJg71nIVo",
+  authDomain: "chatbot-20954.firebaseapp.com",
+  projectId: "chatbot-20954",
+  storageBucket: "chatbot-20954.firebasestorage.app",
+  messagingSenderId: "196542676864",
+  appId: "1:196542676864:web:9039292a8a542cdaaf8b65"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+let currentUser = null;
+let currentChatId = null;
+let chatListUnsubscribe = null;
+let messageUnsubscribe = null;
+
 document.addEventListener('DOMContentLoaded', () => {
+    // DOM Elements
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
     const messagesWrapper = document.getElementById('messages-wrapper');
@@ -6,157 +38,370 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatContainer = document.getElementById('chat-container');
     const suggestionCards = document.querySelectorAll('.suggestion-card');
     const newChatBtn = document.querySelector('.new-chat-btn');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const modelSelect = document.querySelector('.model-selector select');
+    
+    // Auth Elements
+    const authBtn = document.getElementById('auth-btn');
+    const authText = document.getElementById('auth-text');
+    const authIcon = document.getElementById('auth-icon');
+    const historyList = document.getElementById('history-list');
 
-    // Auto-resize textarea
-    chatInput.addEventListener('input', function() {
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-        
-        // Enable/disable send button based on input
-        if (this.value.trim().length > 0) {
-            sendBtn.removeAttribute('disabled');
+    // --- Authentication Logic ---
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = user;
+            authText.textContent = `Log Out (${user.displayName.split(' ')[0]})`;
+            authIcon.className = 'fa-solid fa-arrow-right-from-bracket';
+            subscribeToChatList();
         } else {
-            sendBtn.setAttribute('disabled', 'true');
+            currentUser = null;
+            authText.textContent = 'Log In with Google';
+            authIcon.className = 'fa-brands fa-google';
+            historyList.innerHTML = '<li class="history-item"><div class="history-content"><span class="history-title">Log in to save history</span></div></li>';
+            if (chatListUnsubscribe) chatListUnsubscribe();
+            resetUI();
         }
     });
 
-    // Handle initial state of send button
-    sendBtn.setAttribute('disabled', 'true');
-
-    // Handle Enter key to send message
-    chatInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+    authBtn.addEventListener('click', async () => {
+        if (currentUser) {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error("Error signing out:", error);
+            }
+        } else {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (error) {
+                console.error("Error signing in:", error);
+                alert("Authentication failed. Please try again.");
+            }
         }
     });
 
-    // Handle Send button click
-    sendBtn.addEventListener('click', sendMessage);
+    // --- Chat Management Logic ---
+    function subscribeToChatList() {
+        if (!currentUser) return;
+        
+        const chatsRef = collection(db, 'users', currentUser.uid, 'chats');
+        const q = query(chatsRef, orderBy('updatedAt', 'desc'));
+        
+        if (chatListUnsubscribe) chatListUnsubscribe();
+        
+        chatListUnsubscribe = onSnapshot(q, (snapshot) => {
+            historyList.innerHTML = '';
+            if (snapshot.empty) {
+                historyList.innerHTML = '<li class="history-item"><div class="history-content"><span class="history-title">No chats yet</span></div></li>';
+                return;
+            }
+            
+            snapshot.forEach((doc) => {
+                const chatData = doc.data();
+                const chatId = doc.id;
+                const li = document.createElement('li');
+                li.className = `history-item ${currentChatId === chatId ? 'active' : ''}`;
+                li.dataset.id = chatId;
+                
+                li.innerHTML = `
+                    <div class="history-content">
+                        <i class="fa-regular fa-message"></i>
+                        <span class="history-title">${chatData.title || 'New Chat'}</span>
+                    </div>
+                    <div class="history-actions">
+                        <button class="action-btn rename-chat" title="Rename"><i class="fa-solid fa-pen"></i></button>
+                        <button class="action-btn delete-chat delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                
+                li.addEventListener('click', (e) => {
+                    if (e.target.closest('.history-actions')) return;
+                    selectChat(chatId);
+                });
+                
+                li.querySelector('.delete-chat').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteChat(chatId);
+                });
 
-    // Handle suggestion clicks
-    suggestionCards.forEach(card => {
-        card.addEventListener('click', () => {
-            const promptStrong = card.querySelector('strong').innerText;
-            const promptSub = card.querySelector('.subtext').innerText;
-            chatInput.value = `${promptStrong} ${promptSub}`;
-            sendMessage();
+                li.querySelector('.rename-chat').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    renameChat(chatId, chatData.title);
+                });
+                
+                historyList.appendChild(li);
+            });
         });
-    });
+    }
 
-    // Handle New Chat button
-    newChatBtn.addEventListener('click', () => {
+    async function selectChat(chatId) {
+        if (currentChatId === chatId) return;
+        currentChatId = chatId;
+        
+        document.querySelectorAll('.history-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.id === chatId);
+        });
+        
+        welcomeScreen.style.display = 'none';
+        messagesWrapper.style.display = 'flex';
+        messagesWrapper.innerHTML = '';
+        
+        if (messageUnsubscribe) messageUnsubscribe();
+        
+        const messagesRef = collection(db, 'users', currentUser.uid, 'chats', chatId, 'messages');
+        const q = query(messagesRef, orderBy('timestamp', 'asc'));
+        
+        messageUnsubscribe = onSnapshot(q, (snapshot) => {
+            messagesWrapper.innerHTML = '';
+            snapshot.forEach((doc) => {
+                const msg = doc.data();
+                appendMessage(msg.sender, msg.text, false, msg.timestamp?.toDate());
+            });
+            scrollToBottom();
+        });
+        
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('active');
+    }
+
+    async function deleteChat(chatId) {
+        if (!confirm("Are you sure you want to delete this chat?")) return;
+        try {
+            const chatRef = doc(db, 'users', currentUser.uid, 'chats', chatId);
+            await deleteDoc(chatRef);
+            if (currentChatId === chatId) {
+                resetUI();
+            }
+        } catch (error) {
+            console.error("Error deleting chat:", error);
+        }
+    }
+
+    async function renameChat(chatId, currentTitle) {
+        const newTitle = prompt("Enter new chat title:", currentTitle);
+        if (!newTitle || newTitle === currentTitle) return;
+        try {
+            const chatRef = doc(db, 'users', currentUser.uid, 'chats', chatId);
+            await updateDoc(chatRef, { title: newTitle });
+        } catch (error) {
+            console.error("Error renaming chat:", error);
+        }
+    }
+
+    function resetUI() {
+        currentChatId = null;
         messagesWrapper.innerHTML = '';
         messagesWrapper.style.display = 'none';
         welcomeScreen.style.display = 'flex';
-        chatInput.value = '';
-        chatInput.style.height = 'auto';
-        sendBtn.setAttribute('disabled', 'true');
-        chatInput.focus();
-    });
-
-    function sendMessage() {
-        const messageText = chatInput.value.trim();
-        if (messageText === '') return;
-
-        // Hide welcome screen and show messages wrapper on first message
-        if (welcomeScreen.style.display !== 'none') {
-            welcomeScreen.style.display = 'none';
-            messagesWrapper.style.display = 'flex';
-        }
-
-        // Add User Message
-        appendMessage('user', messageText);
-
-        // Clear input and reset height
-        chatInput.value = '';
-        chatInput.style.height = 'auto';
-        sendBtn.setAttribute('disabled', 'true');
-
-        // Scroll to bottom
-        scrollToBottom();
-
-        // Simulate Bot Response (To be replaced with real API later)
-        simulateBotResponse(messageText);
+        if (messageUnsubscribe) messageUnsubscribe();
     }
 
-    function appendMessage(sender, text) {
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', sender);
+    // --- Message Logic ---
+    async function sendMessage() {
+        const text = chatInput.value.trim();
+        if (!text) return;
 
-        const avatarIcon = sender === 'user' ? 'U' : '<i class="fa-solid fa-robot"></i>';
+        if (!currentUser) {
+            alert("Please log in to chat!");
+            return;
+        }
+
+        chatInput.value = '';
+        chatInput.style.height = 'auto';
+        sendBtn.setAttribute('disabled', 'true');
+
+        if (!currentChatId) {
+            const chatsRef = collection(db, 'users', currentUser.uid, 'chats');
+            const newChatDoc = await addDoc(chatsRef, {
+                title: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp()
+            });
+            currentChatId = newChatDoc.id;
+            selectChat(currentChatId);
+        }
+
+        await saveMessageToDB('user', text);
+        getAIResponse(text);
+    }
+
+    async function getAIResponse(userText) {
+        const skeletonDiv = appendMessage('bot', '', true);
+        scrollToBottom();
+
+        try {
+            const selectedModel = modelSelect.value === 'advanced' ? 'google/gemini-2.0-pro-exp-02-05:free' : 'google/gemini-2.0-flash-001';
+            
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    message: userText,
+                    model: selectedModel
+                })
+            });
+
+            const data = await response.json();
+            skeletonDiv.remove();
+
+            if (data.error) {
+                appendMessage('bot', "Error: " + data.error);
+            } else {
+                await saveMessageToDB('bot', data.reply);
+            }
+        } catch (error) {
+            console.error("API Error:", error);
+            skeletonDiv.remove();
+            appendMessage('bot', "Sorry, I'm having trouble connecting to the server. Please make sure your server is running.");
+        }
+        scrollToBottom();
+    }
+
+    async function saveMessageToDB(sender, text) {
+        if (!currentUser || !currentChatId) return;
+        try {
+            const messagesRef = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
+            await addDoc(messagesRef, {
+                sender: sender,
+                text: text,
+                timestamp: serverTimestamp()
+            });
+            
+            const chatRef = doc(db, 'users', currentUser.uid, 'chats', currentChatId);
+            await updateDoc(chatRef, { updatedAt: serverTimestamp() });
+        } catch (error) {
+            console.error("Error saving message:", error);
+        }
+    }
+
+    // --- UI Helpers ---
+    function appendMessage(sender, text, isSkeleton = false, date = new Date()) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${sender}`;
+
+        let avatarContent = '';
+        let senderName = '';
+        
+        if (sender === 'user') {
+            if (currentUser && currentUser.photoURL) {
+                avatarContent = `<img src="${currentUser.photoURL}" alt="User" style="width:100%; height:100%; border-radius:4px;">`;
+            } else {
+                avatarContent = 'U';
+            }
+            senderName = currentUser ? currentUser.displayName.split(' ')[0] : 'You';
+        } else {
+            avatarContent = '<i class="fa-solid fa-robot"></i>';
+            senderName = 'AI Assistant';
+        }
+
+        const timeStr = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...';
 
         messageDiv.innerHTML = `
             <div class="message-content">
-                <div class="avatar ${sender}">
-                    ${avatarIcon}
-                </div>
-                <div class="message-text">
-                    ${formatText(text)}
+                <div class="avatar ${sender}">${avatarContent}</div>
+                <div class="message-body">
+                    <div class="message-header">
+                        <span class="sender-name">${senderName}</span>
+                        <span class="message-time">${timeStr}</span>
+                    </div>
+                    <div class="message-text">
+                        ${isSkeleton ? `
+                            <div class="skeleton-loader">
+                                <div class="skeleton-line medium"></div>
+                                <div class="skeleton-line"></div>
+                            </div>
+                        ` : formatText(text)}
+                    </div>
+                    ${!isSkeleton && sender === 'bot' ? `
+                        <div class="message-actions">
+                            <button class="msg-action-btn copy-btn" title="Copy"><i class="fa-regular fa-copy"></i></button>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
 
         messagesWrapper.appendChild(messageDiv);
+        
+        if (!isSkeleton && sender === 'bot') {
+            const copyBtn = messageDiv.querySelector('.copy-btn');
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(text);
+                copyBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                setTimeout(() => copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i>', 2000);
+            });
+        }
+        
+        return messageDiv;
     }
 
-    function showTypingIndicator() {
-        const typingDiv = document.createElement('div');
-        typingDiv.classList.add('message', 'bot');
-        typingDiv.id = 'typing-indicator-msg';
-
-        typingDiv.innerHTML = `
-            <div class="message-content">
-                <div class="avatar bot">
-                    <i class="fa-solid fa-robot"></i>
-                </div>
-                <div class="message-text">
-                    <div class="typing-indicator">
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                        <div class="typing-dot"></div>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        messagesWrapper.appendChild(typingDiv);
-        scrollToBottom();
-        return typingDiv;
+    function formatText(text) {
+        let html = text.replace(/```(\w*)\n([\s\S]*?)```/g, (m, lang, code) => {
+            return `<div class="code-block-wrapper">
+                <div class="code-header"><span>${lang || 'code'}</span><button class="copy-code-btn"><i class="fa-regular fa-copy"></i> Copy</button></div>
+                <pre><code>${escapeHTML(code.trim())}</code></pre>
+            </div>`;
+        });
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        return html.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
     }
 
-    function simulateBotResponse(userMessage) {
-        const typingIndicator = showTypingIndicator();
-
-        // Simulate network delay
-        setTimeout(() => {
-            typingIndicator.remove();
-            
-            // Dummy logic for UI demonstration
-            let botReply = "This is a simulated response. Later, you will integrate an API here (like OpenAI or Google Gemini) to get real responses.";
-            
-            if (userMessage.toLowerCase().includes('hello')) {
-                botReply = "Hello there! How can I assist you today?";
-            } else if (userMessage.toLowerCase().includes('code')) {
-                botReply = "Sure! Here is a simple example of a JavaScript function:\n\n```javascript\nfunction greet(name) {\n    return `Hello, ${name}!`;\n}\nconsole.log(greet('World'));\n```\n\nYou can ask me to write more specific code later!";
-            }
-
-            appendMessage('bot', botReply);
-            scrollToBottom();
-        }, 1500);
+    function escapeHTML(str) {
+        return str.replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag] || tag));
     }
 
     function scrollToBottom() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // Simple markdown formatting (bold and code blocks) for the UI demo
-    function formatText(text) {
-        // Simple code block formatting
-        let formattedText = text.replace(/```([\s\S]*?)```/g, '<pre style="background: var(--bg-primary); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1rem 0; border: 1px solid var(--border-color);"><code>$1</code></pre>');
-        
-        // Simple line breaks
-        formattedText = formattedText.replace(/\n/g, '<br>');
-        return formattedText;
-    }
+    themeToggleBtn.addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+        const icon = themeToggleBtn.querySelector('i');
+        const isLight = document.body.classList.contains('light-mode');
+        icon.className = isLight ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        themeToggleBtn.querySelector('span').textContent = isLight ? 'Light Mode' : 'Dark Mode';
+    });
+
+    mobileMenuBtn.addEventListener('click', () => {
+        sidebar.classList.add('open');
+        sidebarOverlay.classList.add('active');
+    });
+
+    sidebarOverlay.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('active');
+    });
+
+    chatInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = this.scrollHeight + 'px';
+        sendBtn.disabled = !this.value.trim();
+    });
+
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    sendBtn.addEventListener('click', sendMessage);
+
+    suggestionCards.forEach(card => {
+        card.addEventListener('click', () => {
+            chatInput.value = card.querySelector('strong').innerText + " " + card.querySelector('.subtext').innerText;
+            sendMessage();
+        });
+    });
+
+    newChatBtn.addEventListener('click', () => {
+        resetUI();
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('active');
+    });
 });
