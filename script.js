@@ -390,12 +390,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clean the prompt to remove "generate an image of" etc.
             let cleanPrompt = prompt.replace(/generate an image of|generate image of|draw a picture of|draw a|create a picture of|create an image of/gi, '').trim();
             
-            // Imagineo-4K Style Prompt Engineering (Hyper-Realistic 4K/8K)
-            const imagineoStyle = "hyper-realistic, ultra-detailed, lifelike, high-resolution, sharp, vibrant colors, photorealistic, cinematic lighting, masterpiece, 4k, 8k, sharp focus, volumetric lighting";
-            const enhancedPrompt = `${cleanPrompt}. ${imagineoStyle}`;
+            // --- Imagineo-4K PRO CONFIGURATION ---
+            const styleWrapper = `hyper-realistic 8K image of ${cleanPrompt}. ultra-detailed, lifelike, high-resolution, sharp, vibrant colors, photorealistic, cinematic lighting, masterpiece, sharp focus, volumetric lighting, 8k uhd`;
+            
+            const negativePrompt = "(deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, (mutated hands and fingers:1.4), disconnected limbs, mutation, mutated, ugly, disgusting, blurry, amputation";
 
-            // Using Pollinations Image API with Imagineo-inspired parameters
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1280&height=1280&nologo=true&enhance=true&model=flux&seed=${Math.floor(Math.random() * 1000000)}`;
+            // Using Pollinations Image API with Imagineo-4K PRO parameters
+            // width=1024, height=1024, model=flux (best for realistic), enhance=true
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(styleWrapper)}?width=1024&height=1024&nologo=true&enhance=true&model=flux&negative=${encodeURIComponent(negativePrompt)}&seed=${Math.floor(Math.random() * 1000000)}`;
             
             // Wait for image to "load" conceptually
             const img = new Image();
