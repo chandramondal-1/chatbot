@@ -5,6 +5,7 @@ import {
     getFirestore, collection, addDoc, getDocs, query, orderBy, 
     serverTimestamp, onSnapshot, doc, deleteDoc, setDoc, updateDoc, getDoc 
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js";
 
 // ==========================================
 // 🔴 CONFIGURATION 🔴
@@ -24,6 +25,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 const provider = new GoogleAuthProvider();
 
 let currentUser = null;
@@ -51,6 +53,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const authText = document.getElementById('auth-text');
     const authIcon = document.getElementById('auth-icon');
     const historyList = document.getElementById('history-list');
+    const fileInput = document.getElementById('file-input');
+    const attachBtn = document.getElementById('attach-btn');
 
     // --- Authentication Logic ---
     onAuthStateChanged(auth, (user) => {
@@ -161,7 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
             messagesWrapper.innerHTML = '';
             snapshot.forEach((doc) => {
                 const msg = doc.data();
-                appendMessage(msg.sender, msg.text, false, msg.timestamp?.toDate());
+                appendMessage(msg.sender, msg.text, false, msg.timestamp?.toDate(), msg.fileUrl, msg.fileType);
             });
             scrollToBottom();
         });
@@ -240,13 +244,36 @@ document.addEventListener('DOMContentLoaded', () => {
         getAIResponse(text);
     }
 
+    async function handleFileUpload(file) {
+        if (!currentUser || !currentChatId) {
+            alert("Please start a chat or log in first!");
+            return;
+        }
+
+        const skeletonDiv = appendMessage('bot', "Uploading file...", true);
+        scrollToBottom();
+
+        try {
+            const fileRef = ref(storage, `users/${currentUser.uid}/chats/${currentChatId}/${Date.now()}_${file.name}`);
+            const snapshot = await uploadBytes(fileRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            
+            skeletonDiv.remove();
+            
+            await saveMessageToDB('user', `Uploaded a file: ${file.name}`, downloadURL, file.type);
+            getAIResponse(`The user has uploaded a file or image: ${file.name}. Please acknowledge it.`);
+        } catch (error) {
+            console.error("Upload error:", error);
+            skeletonDiv.remove();
+            alert("Failed to upload file. Make sure you have enabled Firebase Storage in your console.");
+        }
+    }
+
     async function getAIResponse(userText) {
         const skeletonDiv = appendMessage('bot', '', true);
         scrollToBottom();
 
         try {
-            // Since this is GitHub Pages, we use a free, CORS-friendly AI API (Pollinations AI)
-            // This prevents API key leakage and bypasses CORS security blocks!
             const response = await fetch('https://text.pollinations.ai/', {
                 method: 'POST',
                 headers: { 
@@ -254,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify({ 
                     messages: [
-                        { role: 'system', content: 'You are a helpful and intelligent AI assistant.' },
+                        { role: 'system', content: 'You are a helpful and intelligent AI assistant. You were created by CHANDRA MONDAL. If anyone asks who made you, who created you, or who is your developer, you MUST answer that you were made by CHANDRA MONDAL.' },
                         { role: 'user', content: userText }
                     ]
                 })
@@ -276,13 +303,15 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
     }
 
-    async function saveMessageToDB(sender, text) {
+    async function saveMessageToDB(sender, text, fileUrl = null, fileType = null) {
         if (!currentUser || !currentChatId) return;
         try {
             const messagesRef = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
             await addDoc(messagesRef, {
                 sender: sender,
                 text: text,
+                fileUrl: fileUrl,
+                fileType: fileType,
                 timestamp: serverTimestamp()
             });
             
@@ -294,7 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI Helpers ---
-    function appendMessage(sender, text, isSkeleton = false, date = new Date()) {
+    function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, fileType = null) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
 
@@ -315,6 +344,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const timeStr = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...';
 
+        let mediaContent = '';
+        if (fileUrl) {
+            if (fileType && fileType.startsWith('image/')) {
+                mediaContent = `<div class="message-media"><img src="${fileUrl}" alt="Uploaded Image" style="max-width: 100%; border-radius: 8px; margin-top: 8px; cursor: pointer;" onclick="window.open('${fileUrl}', '_blank')"></div>`;
+            } else {
+                mediaContent = `<div class="message-media" style="margin-top: 8px;">
+                    <a href="${fileUrl}" target="_blank" style="display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: 8px; text-decoration: none; color: var(--text-primary); border: 1px solid var(--border-color);">
+                        <i class="fa-solid fa-file"></i>
+                        <span>Download Attachment</span>
+                    </a>
+                </div>`;
+            }
+        }
+
         messageDiv.innerHTML = `
             <div class="message-content">
                 <div class="avatar ${sender}">${avatarContent}</div>
@@ -331,6 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         ` : formatText(text)}
                     </div>
+                    ${mediaContent}
                     ${!isSkeleton && sender === 'bot' ? `
                         <div class="message-actions">
                             <button class="msg-action-btn copy-btn" title="Copy"><i class="fa-regular fa-copy"></i></button>
@@ -406,6 +450,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     sendBtn.addEventListener('click', sendMessage);
+
+    attachBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleFileUpload(file);
+        }
+    });
 
     suggestionCards.forEach(card => {
         card.addEventListener('click', () => {

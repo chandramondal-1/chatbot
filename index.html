@@ -116,7 +116,8 @@
             <!-- Input Area -->
             <div class="input-area">
                 <div class="input-wrapper">
-                    <button class="attach-btn" title="Attach file">
+                    <input type="file" id="file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt">
+                    <button class="attach-btn" id="attach-btn" title="Attach file">
                         <i class="fa-solid fa-paperclip"></i>
                     </button>
                     <textarea id="chat-input" placeholder="Message AI..." rows="1" autofocus></textarea>
