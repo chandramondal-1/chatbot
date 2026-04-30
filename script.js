@@ -7,7 +7,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
 // ==========================================
-// 🔴 FIREBASE CONFIGURATION 🔴
+// 🔴 CONFIGURATION 🔴
 // ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyDANJ-7C4CNHCOsrUGpZL6mN3bJg71nIVo",
@@ -17,6 +17,9 @@ const firebaseConfig = {
   messagingSenderId: "196542676864",
   appId: "1:196542676864:web:9039292a8a542cdaaf8b65"
 };
+
+// OpenRouter Key (Moved to frontend for GitHub Pages compatibility)
+const OPENROUTER_API_KEY = "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";
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -78,8 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await signInWithPopup(auth, provider);
             } catch (error) {
-                console.error("Error signing in:", error);
-                alert("Authentication failed. Please try again.");
+                console.error("Firebase Auth Error:", error.code, error.message);
+                alert("Authentication failed: " + error.message + "\n\nTip: Make sure you added 'chandramondal-1.github.io' to Authorized Domains in Firebase Console.");
             }
         }
     });
@@ -234,14 +237,18 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
 
         try {
+            // Note: Since this is GitHub Pages, we call OpenRouter DIRECTLY from the frontend
             const selectedModel = modelSelect.value === 'advanced' ? 'google/gemini-2.0-pro-exp-02-05:free' : 'google/gemini-2.0-flash-001';
             
-            const response = await fetch('/api/chat', {
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${OPENROUTER_API_KEY}`
+                },
                 body: JSON.stringify({ 
-                    message: userText,
-                    model: selectedModel
+                    model: selectedModel,
+                    messages: [{ role: 'user', content: userText }]
                 })
             });
 
@@ -249,14 +256,15 @@ document.addEventListener('DOMContentLoaded', () => {
             skeletonDiv.remove();
 
             if (data.error) {
-                appendMessage('bot', "Error: " + data.error);
+                appendMessage('bot', "AI Error: " + (data.error.message || data.error));
             } else {
-                await saveMessageToDB('bot', data.reply);
+                const reply = data.choices[0].message.content;
+                await saveMessageToDB('bot', reply);
             }
         } catch (error) {
             console.error("API Error:", error);
             skeletonDiv.remove();
-            appendMessage('bot', "Sorry, I'm having trouble connecting to the server. Please make sure your server is running.");
+            appendMessage('bot', "Sorry, I'm having trouble connecting to the AI. Check your internet connection.");
         }
         scrollToBottom();
     }
