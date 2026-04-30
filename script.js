@@ -7,9 +7,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-storage.js";
 
-// ==========================================
-// 🔴 CONFIGURATION 🔴
-// ==========================================
 const firebaseConfig = {
   apiKey: "AIzaSyDANJ-7C4CNHCOsrUGpZL6mN3bJg71nIVo",
   authDomain: "chatbot-20954.firebaseapp.com",
@@ -19,7 +16,15 @@ const firebaseConfig = {
   appId: "1:196542676864:web:9039292a8a542cdaaf8b65"
 };
 
-// Removed API key for security (using free CORS-friendly AI now)
+// ==========================================
+// 🔑 API KEYS (⚠️ SECURITY WARNING: THESE ARE PUBLIC IN CLIENT-SIDE CODE)
+// ==========================================
+const API_KEYS = {
+    NVIDIA: "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",
+    DEEPSEEK: "sk-307e82fb40834e62a5543eaa83153e46",
+    KIMI: "sk-TdqBDO7VLXovKiRTs6WwuB2CACjbCSWvXwOxdwJSmMOCQ8DJ",
+    OPENROUTER: "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"
+};
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -273,32 +278,91 @@ document.addEventListener('DOMContentLoaded', () => {
         const skeletonDiv = appendMessage('bot', '', true);
         scrollToBottom();
 
+        const selectedModel = document.getElementById('model-select').value;
+        let apiUrl = 'https://text.pollinations.ai/';
+        let apiKey = '';
+        let apiBody = { 
+            messages: [
+                { role: 'system', content: 'You are a helpful assistant created by CHANDRA MONDAL.' },
+                { role: 'user', content: userText }
+            ]
+        };
+        let apiHeaders = { 'Content-Type': 'application/json' };
+
+        // --- Model Routing Logic ---
+        let finalModel = selectedModel;
+        if (selectedModel === 'auto') {
+            const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
+            const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
+            finalModel = isCoding ? 'deepseek' : 'nvidia';
+        }
+
         try {
-            const response = await fetch('https://text.pollinations.ai/', {
+            if (finalModel === 'deepseek') {
+                apiUrl = 'https://api.deepseek.com/chat/completions';
+                apiKey = API_KEYS.DEEPSEEK;
+                apiBody.model = 'deepseek-chat';
+            } else if (finalModel === 'nvidia') {
+                apiUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
+                apiKey = API_KEYS.NVIDIA;
+                apiBody.model = 'nvidia/llama-3.1-8b-instruct';
+            } else if (finalModel === 'kimi') {
+                apiUrl = 'https://api.moonshot.cn/v1/chat/completions';
+                apiKey = API_KEYS.KIMI;
+                apiBody.model = 'moonshot-v1-8k';
+            } else if (finalModel === 'openrouter') {
+                apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+                apiKey = API_KEYS.OPENROUTER;
+                apiBody.model = 'meta-llama/llama-3.1-8b-instruct:free';
+            }
+
+            if (apiKey) {
+                apiHeaders['Authorization'] = `Bearer ${apiKey}`;
+            }
+
+            const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    messages: [
-                        { role: 'system', content: 'You are a helpful and intelligent AI assistant. You were created by CHANDRA MONDAL. If anyone asks who made you, who created you, or who is your developer, you MUST answer that you were made by CHANDRA MONDAL.' },
-                        { role: 'user', content: userText }
-                    ]
-                })
+                headers: apiHeaders,
+                body: JSON.stringify(apiBody)
             });
 
-            const replyText = await response.text();
+            let replyText = '';
+            if (apiUrl.includes('pollinations')) {
+                replyText = await response.text();
+            } else {
+                const data = await response.json();
+                replyText = data.choices[0].message.content;
+            }
+
             skeletonDiv.remove();
 
             if (!response.ok) {
-                appendMessage('bot', "AI Error: Something went wrong.");
+                throw new Error("API response not OK");
             } else {
                 await saveMessageToDB('bot', replyText);
             }
         } catch (error) {
             console.error("API Error:", error);
             skeletonDiv.remove();
-            appendMessage('bot', "Sorry, I'm having trouble connecting to the AI. Check your internet connection.");
+            
+            // Fallback to Pollinations AI if special API fails (usually due to CORS)
+            try {
+                console.log("Falling back to Pollinations AI...");
+                const fallbackResponse = await fetch('https://text.pollinations.ai/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        messages: [
+                            { role: 'system', content: 'You are a helpful assistant created by CHANDRA MONDAL. A previous API call failed, so please answer the user normally.' },
+                            { role: 'user', content: userText }
+                        ]
+                    })
+                });
+                const fallbackText = await fallbackResponse.text();
+                await saveMessageToDB('bot', fallbackText);
+            } catch (fallbackError) {
+                appendMessage('bot', "Sorry, I'm having trouble connecting to all AI services. Please check your internet.");
+            }
         }
         scrollToBottom();
     }
