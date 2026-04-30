@@ -16,16 +16,8 @@ const firebaseConfig = {
   appId: "1:196542676864:web:9039292a8a542cdaaf8b65"
 };
 
-// ==========================================
-// 🔑 API KEYS (⚠️ SECURITY WARNING: THESE ARE PUBLIC IN CLIENT-SIDE CODE)
-// ==========================================
-const API_KEYS = {
-    NVIDIA: "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",
-    DEEPSEEK: "sk-307e82fb40834e62a5543eaa83153e46",
-    KIMI: "sk-TdqBDO7VLXovKiRTs6WwuB2CACjbCSWvXwOxdwJSmMOCQ8DJ",
-    OPENROUTER: "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",
-    POLLINATIONS: "pk_P1HC0AzCbIxQrtac"
-};
+// (API keys are now handled securely on the server-side in server.js)
+
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -350,8 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const skeletonDiv = appendMessage('bot', '', true);
         scrollToBottom();
 
-        let apiUrl = 'https://text.pollinations.ai/';
-        let apiKey = '';
         const settings = loadSettings();
         let systemPrompt = 'You are a multimodal assistant created by CHANDRA MONDAL. You can see images if a URL is provided.';
         
@@ -361,21 +351,7 @@ document.addEventListener('DOMContentLoaded', () => {
             systemPrompt = 'You are an expert software engineer created by CHANDRA MONDAL. Provide clean, optimized code and technical depth.';
         }
 
-        let apiBody = { 
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: mediaUrl ? [
-                    { type: 'text', text: userText },
-                    { type: 'image_url', image_url: { url: mediaUrl } }
-                ] : userText }
-            ]
-        };
-        let apiHeaders = { 'Content-Type': 'application/json' };
-
-        // --- Model Routing Logic (Always Auto) ---
         const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
-        
-        // Extremely loose detection to ensure it never misses an image request
         const isImage = /image|picture|photo|draw|create.*img|generate.*img|sketch|paint/i.test(userText);
         const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
 
@@ -384,74 +360,35 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const finalModel = isCoding ? 'deepseek' : 'nvidia';
+        const modelType = isCoding ? 'deepseek' : 'nvidia';
 
         try {
-            if (finalModel === 'deepseek') {
-                apiUrl = 'https://api.deepseek.com/chat/completions';
-                apiKey = API_KEYS.DEEPSEEK;
-                apiBody.model = 'deepseek-chat';
-            } else if (finalModel === 'nvidia') {
-                apiUrl = 'https://integrate.api.nvidia.com/v1/chat/completions';
-                apiKey = API_KEYS.NVIDIA;
-                apiBody.model = 'nvidia/llama-3.1-8b-instruct';
-            } else if (finalModel === 'kimi') {
-                apiUrl = 'https://api.moonshot.cn/v1/chat/completions';
-                apiKey = API_KEYS.KIMI;
-                apiBody.model = 'moonshot-v1-8k';
-            } else if (finalModel === 'openrouter') {
-                apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-                apiKey = API_KEYS.OPENROUTER;
-                apiBody.model = 'meta-llama/llama-3.1-8b-instruct:free';
-            }
-
-            if (apiKey) {
-                apiHeaders['Authorization'] = `Bearer ${apiKey}`;
-            }
-
-            const response = await fetch(apiUrl, {
+            const response = await fetch('/api/chat', {
                 method: 'POST',
-                headers: apiHeaders,
-                body: JSON.stringify(apiBody)
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: modelType,
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: mediaUrl ? [
+                            { type: 'text', text: userText },
+                            { type: 'image_url', image_url: { url: mediaUrl } }
+                        ] : userText }
+                    ]
+                })
             });
 
-            let replyText = '';
-            if (apiUrl.includes('pollinations')) {
-                replyText = await response.text();
-            } else {
-                const data = await response.json();
-                replyText = data.choices[0].message.content;
-            }
+            if (!response.ok) throw new Error("Server Response Error");
+
+            const data = await response.json();
+            const replyText = data.choices[0].message.content;
 
             skeletonDiv.remove();
-
-            if (!response.ok) {
-                throw new Error("API response not OK");
-            } else {
-                await saveMessageToDB('bot', replyText);
-            }
+            await saveMessageToDB('bot', replyText);
         } catch (error) {
             console.error("API Error:", error);
             skeletonDiv.remove();
-            
-            // Fallback to Pollinations AI if special API fails (usually due to CORS)
-            try {
-                console.log("Falling back to Pollinations AI...");
-                const fallbackResponse = await fetch('https://text.pollinations.ai/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        messages: [
-                            { role: 'system', content: 'You are a helpful assistant created by CHANDRA MONDAL. A previous API call failed, so please answer the user normally.' },
-                            { role: 'user', content: userText }
-                        ]
-                    })
-                });
-                const fallbackText = await fallbackResponse.text();
-                await saveMessageToDB('bot', fallbackText);
-            } catch (fallbackError) {
-                appendMessage('bot', "Sorry, I'm having trouble connecting to all AI services. Please check your internet.");
-            }
+            appendMessage('bot', "Sorry, I'm having trouble connecting to the AI service. Please check your connection.");
         }
         scrollToBottom();
     }
@@ -460,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const settings = loadSettings();
             const cleanText = prompt.substring(0, 1000);
-            const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=${settings.voice}&key=${API_KEYS.POLLINATIONS}`;
+            const audioUrl = `/api/proxy/audio?text=${encodeURIComponent(cleanText)}&voice=${settings.voice}`;
             
             skeletonDiv.remove();
             const replyText = `I have generated a voice note for your text: "${cleanText.substring(0, 50)}..."`;
@@ -506,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 styleWrapper = `high quality image of ${cleanPrompt}. 4k resolution, clear, bright`;
             }
 
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(styleWrapper)}?width=1024&height=1024&nologo=true&enhance=true&model=flux&negative=${encodeURIComponent(negativePrompt)}&seed=${Math.floor(Math.random() * 1000000)}&key=${API_KEYS.POLLINATIONS}`;
+            const imageUrl = `/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&width=1024&height=1024&model=flux&negative=${encodeURIComponent(negativePrompt)}&seed=${Math.floor(Math.random() * 1000000)}`;
             
             const img = new Image();
             img.src = imageUrl;
@@ -600,7 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanText = text.replace(/[*#`_]/g, '').substring(0, 1000);
         
         // Using selected AI Voice
-        const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=${settings.voice}&key=${API_KEYS.POLLINATIONS}`;
+        const audioUrl = `/api/proxy/audio?text=${encodeURIComponent(cleanText)}&voice=${settings.voice}`;
         
         currentAudio = new Audio(audioUrl);
         
