@@ -54,6 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const voiceBtn = document.getElementById('voice-btn');
     const inputWrapper = document.querySelector('.input-wrapper');
     const toastContainer = document.getElementById('toast-container');
+    const stopSpeakBtn = document.getElementById('stop-speak-btn');
     const modelSelect = document.querySelector('.model-selector select');
     
     // Auth Elements
@@ -428,8 +429,23 @@ document.addEventListener('DOMContentLoaded', () => {
     function speak(text) {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
+        
+        utterance.onstart = () => {
+            stopSpeakBtn.style.display = 'flex';
+        };
+        
+        utterance.onend = () => {
+            stopSpeakBtn.style.display = 'none';
+        };
+
         window.speechSynthesis.speak(utterance);
     }
+
+    stopSpeakBtn.addEventListener('click', () => {
+        window.speechSynthesis.cancel();
+        stopSpeakBtn.style.display = 'none';
+        showToast("Speech stopped", "info");
+    });
 
     // 3. Toast Notifications
     function showToast(message, type = "success") {

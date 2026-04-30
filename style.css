@@ -298,9 +298,51 @@ body {
     color: var(--text-secondary);
 }
 
-.model-info i {
-    color: #ffd700; /* Gold bolt icon */
-    font-size: 0.85rem;
+.encryption-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem;
+    background-color: rgba(0, 210, 255, 0.05);
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.encryption-banner i {
+    color: #10a37f;
+    font-size: 0.8rem;
+}
+
+.stop-speak-btn {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 75, 43, 0.1);
+    color: #ff4b2b;
+    border: 1px solid rgba(255, 75, 43, 0.2);
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+    0% { border-color: rgba(255, 75, 43, 0.2); }
+    50% { border-color: rgba(255, 75, 43, 0.5); }
+    100% { border-color: rgba(255, 75, 43, 0.2); }
+}
+
+.stop-speak-btn:hover {
+    background: rgba(255, 75, 43, 0.2);
 }
 
 .chat-container {
