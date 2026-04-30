@@ -238,15 +238,12 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // Since this is GitHub Pages, we use a free, CORS-friendly AI API (Pollinations AI)
             // This prevents API key leakage and bypasses CORS security blocks!
-            const selectedModel = modelSelect.value === 'advanced' ? 'gpt-4o' : 'openai';
-            
             const response = await fetch('https://text.pollinations.ai/', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ 
-                    model: selectedModel,
                     messages: [
                         { role: 'system', content: 'You are a helpful and intelligent AI assistant.' },
                         { role: 'user', content: userText }
