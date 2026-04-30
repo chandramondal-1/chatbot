@@ -23,7 +23,8 @@ const API_KEYS = {
     NVIDIA: "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",
     DEEPSEEK: "sk-307e82fb40834e62a5543eaa83153e46",
     KIMI: "sk-TdqBDO7VLXovKiRTs6WwuB2CACjbCSWvXwOxdwJSmMOCQ8DJ",
-    OPENROUTER: "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"
+    OPENROUTER: "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",
+    POLLINATIONS: "pk_P1HC0AzCbIxQrtac"
 };
 
 // Initialize Firebase
@@ -459,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const settings = loadSettings();
             const cleanText = prompt.substring(0, 1000);
-            const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=${settings.voice}`;
+            const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=${settings.voice}&key=${API_KEYS.POLLINATIONS}`;
             
             skeletonDiv.remove();
             const replyText = `I have generated a voice note for your text: "${cleanText.substring(0, 50)}..."`;
@@ -505,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 styleWrapper = `high quality image of ${cleanPrompt}. 4k resolution, clear, bright`;
             }
 
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(styleWrapper)}?width=1024&height=1024&nologo=true&enhance=true&model=flux&negative=${encodeURIComponent(negativePrompt)}&seed=${Math.floor(Math.random() * 1000000)}`;
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(styleWrapper)}?width=1024&height=1024&nologo=true&enhance=true&model=flux&negative=${encodeURIComponent(negativePrompt)}&seed=${Math.floor(Math.random() * 1000000)}&key=${API_KEYS.POLLINATIONS}`;
             
             const img = new Image();
             img.src = imageUrl;
@@ -599,7 +600,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cleanText = text.replace(/[*#`_]/g, '').substring(0, 1000);
         
         // Using selected AI Voice
-        const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=${settings.voice}`;
+        const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=${settings.voice}&key=${API_KEYS.POLLINATIONS}`;
         
         currentAudio = new Audio(audioUrl);
         
