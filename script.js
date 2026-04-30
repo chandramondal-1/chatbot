@@ -278,7 +278,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const skeletonDiv = appendMessage('bot', '', true);
         scrollToBottom();
 
-        const selectedModel = document.getElementById('model-select').value;
         let apiUrl = 'https://text.pollinations.ai/';
         let apiKey = '';
         let apiBody = { 
@@ -289,13 +288,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         let apiHeaders = { 'Content-Type': 'application/json' };
 
-        // --- Model Routing Logic ---
-        let finalModel = selectedModel;
-        if (selectedModel === 'auto') {
-            const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
-            const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
-            finalModel = isCoding ? 'deepseek' : 'nvidia';
-        }
+        // --- Model Routing Logic (Always Auto) ---
+        const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
+        const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
+        const finalModel = isCoding ? 'deepseek' : 'nvidia';
 
         try {
             if (finalModel === 'deepseek') {
