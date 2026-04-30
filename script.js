@@ -58,6 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageStyleSelect = document.getElementById('image-style-select');
     const textModeSelect = document.getElementById('text-mode-select');
     const voiceSelect = document.getElementById('voice-select');
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    let currentAppMode = 'text'; // Default mode
     const modelSelect = document.querySelector('.model-selector select');
     
     // Auth Elements
@@ -247,6 +249,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const currentSettings = loadSettings();
 
+    // --- Mode Selector Logic ---
+    modeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            modeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentAppMode = btn.dataset.mode;
+            
+            // Update input placeholder based on mode
+            if (currentAppMode === 'image') {
+                chatInput.placeholder = "Describe the image you want to create...";
+            } else if (currentAppMode === 'voice') {
+                chatInput.placeholder = "Type what you want the AI to say...";
+            } else {
+                chatInput.placeholder = "Message AI...";
+            }
+        });
+    });
+
     // --- Firebase Auth ---
     async function sendMessage() {
         const text = chatInput.value.trim();
@@ -282,7 +302,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        getAIResponse(text);
+        // Route based on selected mode
+        if (currentAppMode === 'image') {
+            const skeletonDiv = appendMessage('bot', '', true);
+            handleImageGeneration(text, skeletonDiv);
+        } else if (currentAppMode === 'voice') {
+            const skeletonDiv = appendMessage('bot', '', true);
+            handleVoiceGeneration(text, skeletonDiv);
+        } else {
+            getAIResponse(text);
+        }
     }
 
     async function handleFileUpload(file) {
@@ -424,6 +453,38 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         scrollToBottom();
+    }
+
+    async function handleVoiceGeneration(prompt, skeletonDiv) {
+        try {
+            const settings = loadSettings();
+            const cleanText = prompt.substring(0, 1000);
+            const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=${settings.voice}`;
+            
+            skeletonDiv.remove();
+            const replyText = `I have generated a voice note for your text: "${cleanText.substring(0, 50)}..."`;
+            
+            // Append as a playable audio message
+            const messageDiv = appendMessage('bot', replyText);
+            const mediaWrapper = document.createElement('div');
+            mediaWrapper.className = 'message-media';
+            mediaWrapper.style.marginTop = '12px';
+            mediaWrapper.innerHTML = `
+                <audio controls src="${audioUrl}" style="width: 100%; border-radius: 12px;"></audio>
+                <button onclick="downloadMedia('${audioUrl}', 'ai-voice-${Date.now()}.mp3')" class="msg-action-btn" style="margin-top: 10px; border-color: #ffd700; color: #ffd700;">
+                    <i class="fa-solid fa-download"></i> Download Voice Note
+                </button>
+            `;
+            messageDiv.querySelector('.message-body').appendChild(mediaWrapper);
+            
+            await saveMessageToDB('bot', replyText, audioUrl, 'audio/mpeg');
+            showToast("Voice generated!", "success");
+
+        } catch (error) {
+            console.error("Voice Gen Error:", error);
+            skeletonDiv.remove();
+            appendMessage('bot', "Sorry, I couldn't generate that voice note.");
+        }
     }
 
     async function handleImageGeneration(prompt, skeletonDiv) {

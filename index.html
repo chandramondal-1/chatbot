@@ -156,9 +156,20 @@
                 </div>
             </div>
 
-            <!-- Input Area -->
-            <div class="input-area">
-                <div class="input-wrapper">
+            <footer class="chat-footer">
+                <div class="input-container">
+                    <div class="mode-selector-bar" id="mode-selector-bar">
+                        <button class="mode-btn active" data-mode="text" title="Chat Mode">
+                            <i class="fa-solid fa-message"></i> <span>Chat</span>
+                        </button>
+                        <button class="mode-btn" data-mode="image" title="Image Generation">
+                            <i class="fa-solid fa-image"></i> <span>Image</span>
+                        </button>
+                        <button class="mode-btn" data-mode="voice" title="Voice Generation">
+                            <i class="fa-solid fa-microphone-lines"></i> <span>Voice</span>
+                        </button>
+                    </div>
+                    <div class="input-wrapper">
                     <input type="file" id="file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt">
                     <button class="attach-btn" id="attach-btn" title="Attach file">
                         <i class="fa-solid fa-paperclip"></i>
