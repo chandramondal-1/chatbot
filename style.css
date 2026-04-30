@@ -11,6 +11,7 @@
     
     --accent-green: #10a37f;
     --accent-blue: #3b82f6;
+    --chandra-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
     
     --border-subtle: rgba(255, 255, 255, 0.1);
     --border-active: rgba(255, 255, 255, 0.2);
@@ -196,9 +197,11 @@ body {
 }
 
 .model-info {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 700;
+    background: var(--chandra-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 /* --- Chat Messages --- */
@@ -229,9 +232,12 @@ body {
 }
 
 .welcome-logo {
-    font-size: 2.5rem;
+    font-size: 3rem;
     margin-bottom: 1rem;
-    color: var(--text-main);
+    background: var(--chandra-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.3));
 }
 
 .welcome-screen h1 {
@@ -303,7 +309,7 @@ body {
 }
 
 .msg-avatar.user { background: #5436da; color: white; }
-.msg-avatar.bot { background: var(--accent-green); color: white; }
+.msg-avatar.bot { background: var(--chandra-gradient); color: white; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4); }
 
 .msg-body {
     flex: 1;
@@ -397,16 +403,20 @@ body {
 .send-btn {
     width: 32px;
     height: 32px;
-    background-color: var(--text-main);
-    color: var(--bg-main);
+    background: var(--chandra-gradient);
+    color: white;
     border: none;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: transform 0.2s, opacity 0.2s;
     margin-bottom: 2px;
+}
+
+.send-btn:hover:not(:disabled) {
+    transform: scale(1.05);
 }
 
 .send-btn:disabled {

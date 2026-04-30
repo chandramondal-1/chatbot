@@ -334,12 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
 
         const settings = loadSettings();
-        let systemPrompt = 'You are a multimodal assistant created by CHANDRA MONDAL. You can see images if a URL is provided.';
+        let systemPrompt = 'You are Chandra AI, a highly advanced multimodal assistant created by CHANDRA MONDAL. You are helpful, creative, and professional. You can see images if a URL is provided.';
         
         if (settings.textMode === 'creative') {
             systemPrompt = 'You are a master storyteller and creative writer created by CHANDRA MONDAL. Be poetic and imaginative.';
         } else if (settings.textMode === 'coder') {
-            systemPrompt = 'You are an expert software engineer created by CHANDRA MONDAL. Provide clean, optimized code and technical depth.';
+            systemPrompt = 'You are Chandra AI, an expert software engineer created by CHANDRA MONDAL. Provide clean, optimized code and technical depth.';
         }
 
         const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
@@ -618,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
             senderName = currentUser ? currentUser.displayName.split(' ')[0] : 'You';
         } else {
             avatarContent = '<i class="fa-solid fa-robot"></i>';
-            senderName = 'AI Assistant';
+            senderName = 'Chandra AI';
         }
 
         const timeStr = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...';
