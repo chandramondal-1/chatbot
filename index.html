@@ -3,19 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Chat Assistant</title>
+    <title>ChatGPT</title>
     <link rel="stylesheet" href="style.css">
-    <!-- FontAwesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-    <!-- Marked.js for Markdown -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Prism.js for Syntax Highlighting -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -23,73 +15,53 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <button class="new-chat-btn" id="new-chat-btn">
-                    <i class="fa-solid fa-plus"></i>
-                    <span>New Chat</span>
+                    <span>New chat</span>
+                    <i class="fa-regular fa-pen-to-square"></i>
                 </button>
-                
-                <div class="sidebar-section">
-                    <div class="section-title">AI LAB / SETTINGS</div>
-                    <div class="setting-item">
-                        <label>Image Style</label>
-                        <select id="image-style-select">
-                            <option value="pro">Imagineo 4K Pro</option>
-                            <option value="standard">Standard HD</option>
-                            <option value="anime">Anime Style</option>
-                            <option value="cinematic">Cinematic 3D</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <label>Text Mode</label>
-                        <select id="text-mode-select">
-                            <option value="helpful">Helpful Assistant</option>
-                            <option value="creative">Creative Writer</option>
-                            <option value="coder">Professional Coder</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <label>AI Voice</label>
-                        <select id="voice-select">
-                            <option value="nova">Nova (Female)</option>
-                            <option value="onyx">Onyx (Male)</option>
-                            <option value="echo">Echo (Neutral)</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="section-title">RECENT CHATS</div>
             </div>
 
             <div class="history-container">
+                <div class="section-title" style="padding: 0.5rem 0.75rem;">Recent</div>
                 <ul class="history-list" id="history-list">
                     <!-- History items injected here -->
                 </ul>
             </div>
 
+            <div class="sidebar-section">
+                <div class="section-title">AI Lab</div>
+                <div class="setting-item">
+                    <select id="image-style-select">
+                        <option value="pro">Imagineo 4K Pro</option>
+                        <option value="anime">Anime Style</option>
+                        <option value="cinematic">Cinematic 3D</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <select id="text-mode-select">
+                        <option value="helpful">Helpful Mode</option>
+                        <option value="coder">Coding Mode</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="sidebar-footer">
                 <button class="footer-btn" id="theme-toggle">
-                    <i class="fa-solid fa-moon"></i>
-                    <span>Appearance</span>
+                    <i class="fa-regular fa-sun"></i>
+                    <span>Theme</span>
                 </button>
                 <button class="footer-btn" id="auth-btn">
-                    <i class="fa-brands fa-google" id="auth-icon"></i>
-                    <span id="auth-text">Log In</span>
+                    <i class="fa-brands fa-google"></i>
+                    <span id="auth-text">Log in</span>
                 </button>
             </div>
         </aside>
 
-        <!-- Main Chat Area -->
+        <!-- Main Chat -->
         <main class="chat-main">
             <header class="chat-header">
-                <div class="header-left">
-                    <i class="fa-solid fa-bars menu-toggle" id="mobile-menu-btn"></i>
-                    <div class="model-badge">
-                        <i class="fa-solid fa-bolt"></i>
-                        <span>Auto-Routing v1.2</span>
-                    </div>
-                </div>
-                <button class="stop-speak-btn" id="stop-speak-btn" style="display: none;">
-                    <i class="fa-solid fa-circle-stop"></i> Stop AI
-                </button>
+                <i class="fa-solid fa-bars menu-toggle" id="mobile-menu-btn"></i>
+                <div class="model-info">ChatGPT 4o</div>
+                <div style="width: 24px;"></div> <!-- Spacer -->
             </header>
             
             <div class="chat-container" id="chat-container">
@@ -98,68 +70,58 @@
                     <div class="welcome-logo">
                         <i class="fa-solid fa-robot"></i>
                     </div>
-                    <h1>How can I help you today?</h1>
+                    <h1>What can I help with?</h1>
                     
                     <div class="suggestion-grid">
                         <div class="suggestion-card">
-                            <p><strong>Plan a trip</strong></p>
-                            <p class="subtext">to explore the hidden gems of Japan</p>
-                        </div>
-                        <div class="suggestion-card">
                             <p><strong>Explain</strong></p>
-                            <p class="subtext">quantum computing in simple terms</p>
+                            <p class="subtext">quantum computing simply</p>
                         </div>
                         <div class="suggestion-card">
                             <p><strong>Write code</strong></p>
-                            <p class="subtext">for a responsive navigation bar</p>
+                            <p class="subtext">for a simple snake game</p>
                         </div>
                         <div class="suggestion-card">
-                            <p><strong>Brainstorm</strong></p>
-                            <p class="subtext">ideas for a creative writing prompt</p>
+                            <p><strong>Plan a trip</strong></p>
+                            <p class="subtext">to the Swiss Alps</p>
+                        </div>
+                        <div class="suggestion-card">
+                            <p><strong>Help me write</strong></p>
+                            <p class="subtext">a professional email</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Chat Messages -->
-                <div class="messages-wrapper" id="messages-wrapper">
-                    <!-- Messages will be injected here -->
-                </div>
+                <div class="messages-wrapper" id="messages-wrapper"></div>
             </div>
 
+            <!-- Input Area -->
             <footer class="input-area">
                 <div class="input-container">
-                    <div class="input-top">
-                        <textarea id="chat-input" placeholder="Message AI Assistant..." rows="1"></textarea>
+                    <div class="input-row">
+                        <textarea id="chat-input" placeholder="Message ChatGPT..." rows="1"></textarea>
                         <button class="send-btn" id="send-btn" disabled>
                             <i class="fa-solid fa-arrow-up"></i>
                         </button>
                     </div>
-                    <div class="input-actions">
-                        <div class="action-group">
-                            <input type="file" id="file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt">
-                            <button class="icon-btn" id="attach-btn" title="Attach file">
-                                <i class="fa-solid fa-paperclip"></i>
-                            </button>
-                            <button class="icon-btn" id="voice-btn" title="Voice input">
-                                <i class="fa-solid fa-microphone"></i>
-                            </button>
-                            <div class="mode-pill-container">
-                                <div class="mode-pill active" data-mode="text">Chat</div>
-                                <div class="mode-pill" data-mode="image">Image</div>
-                                <div class="mode-pill" data-mode="voice">Voice</div>
-                            </div>
+                    <div class="input-footer">
+                        <div class="icon-actions">
+                            <input type="file" id="file-input" style="display: none;">
+                            <button class="icon-btn" id="attach-btn"><i class="fa-solid fa-paperclip"></i></button>
+                            <button class="icon-btn" id="voice-btn"><i class="fa-solid fa-microphone"></i></button>
+                            <button class="icon-btn" id="stop-speak-btn" style="display:none; color: #ff4d4d;"><i class="fa-solid fa-stop"></i></button>
                         </div>
-                        <div class="footer-note" style="font-size: 0.7rem; color: var(--text-tertiary);">
-                            AI Assistant v2.0
+                        <div class="mode-pills">
+                            <div class="mode-pill active" data-mode="text">Chat</div>
+                            <div class="mode-pill" data-mode="image">Image</div>
+                            <div class="mode-pill" data-mode="voice">Voice</div>
                         </div>
                     </div>
                 </div>
-                <div id="toast-container"></div>
+                <div id="toast-container" style="position:fixed; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 1000;"></div>
             </footer>
         </main>
-        
-        <!-- Mobile Overlay -->
-        <div class="sidebar-overlay" id="sidebar-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:90;"></div>
+        <div id="sidebar-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:90;"></div>
     </div>
 
     <script type="module" src="script.js"></script>

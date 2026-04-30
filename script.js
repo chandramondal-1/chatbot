@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Auth Elements
     const authBtn = document.getElementById('auth-btn');
     const authText = document.getElementById('auth-text');
-    const authIcon = document.getElementById('auth-icon');
     const historyList = document.getElementById('history-list');
     const fileInput = document.getElementById('file-input');
     const attachBtn = document.getElementById('attach-btn');
@@ -67,14 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = user;
-            authText.textContent = `Log Out (${user.displayName.split(' ')[0]})`;
-            authIcon.className = 'fa-solid fa-arrow-right-from-bracket';
+            authText.textContent = `Log out`;
             subscribeToChatList();
         } else {
             currentUser = null;
-            authText.textContent = 'Log In with Google';
-            authIcon.className = 'fa-brands fa-google';
-            historyList.innerHTML = '<li class="history-item"><div class="history-content"><span class="history-title">Log in to save history</span></div></li>';
+            authText.textContent = 'Log in';
+            historyList.innerHTML = '<li class="history-item">Log in to save history</li>';
             if (chatListUnsubscribe) chatListUnsubscribe();
             resetUI();
         }
@@ -121,14 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.dataset.id = chatId;
                 
                 li.innerHTML = `
-                    <div class="history-content">
-                        <i class="fa-regular fa-message"></i>
-                        <span class="history-title">${chatData.title || 'New Chat'}</span>
-                    </div>
-                    <div class="history-actions">
-                        <button class="action-btn rename-chat" title="Rename"><i class="fa-solid fa-pen"></i></button>
-                        <button class="action-btn delete-chat delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                    </div>
+                    <i class="fa-regular fa-message" style="margin-right: 0.75rem; font-size: 0.8rem;"></i>
+                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${chatData.title || 'New Chat'}</span>
                 `;
                 
                 li.addEventListener('click', (e) => {
@@ -251,11 +242,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Update input placeholder based on mode
             if (currentAppMode === 'image') {
-                chatInput.placeholder = "Describe the image you want to create...";
+                chatInput.placeholder = "Describe the image...";
             } else if (currentAppMode === 'voice') {
-                chatInput.placeholder = "Type what you want the AI to say...";
+                chatInput.placeholder = "Type to speak...";
             } else {
-                chatInput.placeholder = "Message AI...";
+                chatInput.placeholder = "Message ChatGPT...";
             }
         });
     });
