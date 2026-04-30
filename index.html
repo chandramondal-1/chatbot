@@ -22,14 +22,13 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <div class="nav-item" id="new-chat-btn">
+                <button class="new-chat-btn" id="new-chat-btn">
                     <i class="fa-solid fa-plus"></i>
                     <span>New Chat</span>
-                </div>
+                </button>
                 
                 <div class="sidebar-section">
                     <div class="section-title">AI LAB / SETTINGS</div>
-                    
                     <div class="setting-item">
                         <label>Image Style</label>
                         <select id="image-style-select">
@@ -39,7 +38,6 @@
                             <option value="cinematic">Cinematic 3D</option>
                         </select>
                     </div>
-
                     <div class="setting-item">
                         <label>Text Mode</label>
                         <select id="text-mode-select">
@@ -48,7 +46,6 @@
                             <option value="coder">Professional Coder</option>
                         </select>
                     </div>
-
                     <div class="setting-item">
                         <label>AI Voice</label>
                         <select id="voice-select">
@@ -58,45 +55,24 @@
                         </select>
                     </div>
                 </div>
-
+                
                 <div class="section-title">RECENT CHATS</div>
+            </div>
+
+            <div class="history-container">
                 <ul class="history-list" id="history-list">
-                    <!-- History items -->
-                    <li class="history-item active">
-                        <div class="history-content">
-                            <i class="fa-regular fa-message"></i>
-                            <span class="history-title">How to build a chatbot</span>
-                        </div>
-                        <div class="history-actions">
-                            <button class="action-btn" title="Rename"><i class="fa-solid fa-pen"></i></button>
-                            <button class="action-btn delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    </li>
-                    <li class="history-item">
-                        <div class="history-content">
-                            <i class="fa-regular fa-message"></i>
-                            <span class="history-title">Explain quantum computing</span>
-                        </div>
-                        <div class="history-actions">
-                            <button class="action-btn" title="Rename"><i class="fa-solid fa-pen"></i></button>
-                            <button class="action-btn delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    </li>
+                    <!-- History items injected here -->
                 </ul>
             </div>
 
             <div class="sidebar-footer">
-                <button class="settings-btn" id="theme-toggle">
+                <button class="footer-btn" id="theme-toggle">
                     <i class="fa-solid fa-moon"></i>
-                    <span>Dark Mode</span>
+                    <span>Appearance</span>
                 </button>
-                <button class="settings-btn" id="auth-btn">
+                <button class="footer-btn" id="auth-btn">
                     <i class="fa-brands fa-google" id="auth-icon"></i>
-                    <span id="auth-text">Log In with Google</span>
-                </button>
-                <button class="settings-btn">
-                    <i class="fa-solid fa-gear"></i>
-                    <span>Settings</span>
+                    <span id="auth-text">Log In</span>
                 </button>
             </div>
         </aside>
@@ -104,24 +80,18 @@
         <!-- Main Chat Area -->
         <main class="chat-main">
             <header class="chat-header">
-                <button class="mobile-menu-btn" id="mobile-menu-btn">
-                    <i class="fa-solid fa-bars"></i>
-                </button>
-                <div class="model-info">
-                    <i class="fa-solid fa-bolt"></i>
-                    <span>Auto-Routing Enabled</span>
+                <div class="header-left">
+                    <i class="fa-solid fa-bars menu-toggle" id="mobile-menu-btn"></i>
+                    <div class="model-badge">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span>Auto-Routing v1.2</span>
+                    </div>
                 </div>
-                <button class="stop-speak-btn" id="stop-speak-btn" title="Stop Speaking" style="display: none;">
-                    <i class="fa-solid fa-circle-stop"></i>
-                    <span>Stop Speaking</span>
+                <button class="stop-speak-btn" id="stop-speak-btn" style="display: none;">
+                    <i class="fa-solid fa-circle-stop"></i> Stop AI
                 </button>
             </header>
             
-            <div class="encryption-banner">
-                <i class="fa-solid fa-lock"></i>
-                Your chats are end to end encrypted
-            </div>
-
             <div class="chat-container" id="chat-container">
                 <!-- Welcome Screen -->
                 <div class="welcome-screen" id="welcome-screen">
@@ -137,15 +107,15 @@
                         </div>
                         <div class="suggestion-card">
                             <p><strong>Explain</strong></p>
-                            <p class="subtext">the theory of relativity in simple terms</p>
+                            <p class="subtext">quantum computing in simple terms</p>
                         </div>
                         <div class="suggestion-card">
                             <p><strong>Write code</strong></p>
                             <p class="subtext">for a responsive navigation bar</p>
                         </div>
                         <div class="suggestion-card">
-                            <p><strong>Brainstorm ideas</strong></p>
-                            <p class="subtext">for a creative writing prompt</p>
+                            <p><strong>Brainstorm</strong></p>
+                            <p class="subtext">ideas for a creative writing prompt</p>
                         </div>
                     </div>
                 </div>
@@ -156,41 +126,40 @@
                 </div>
             </div>
 
-            <footer class="chat-footer">
+            <footer class="input-area">
                 <div class="input-container">
-                    <div class="mode-selector-bar" id="mode-selector-bar">
-                        <button class="mode-btn active" data-mode="text" title="Chat Mode">
-                            <i class="fa-solid fa-message"></i> <span>Chat</span>
-                        </button>
-                        <button class="mode-btn" data-mode="image" title="Image Generation">
-                            <i class="fa-solid fa-image"></i> <span>Image</span>
-                        </button>
-                        <button class="mode-btn" data-mode="voice" title="Voice Generation">
-                            <i class="fa-solid fa-microphone-lines"></i> <span>Voice</span>
+                    <div class="input-top">
+                        <textarea id="chat-input" placeholder="Message AI Assistant..." rows="1"></textarea>
+                        <button class="send-btn" id="send-btn" disabled>
+                            <i class="fa-solid fa-arrow-up"></i>
                         </button>
                     </div>
-                    <div class="input-wrapper">
-                    <input type="file" id="file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt">
-                    <button class="attach-btn" id="attach-btn" title="Attach file">
-                        <i class="fa-solid fa-paperclip"></i>
-                    </button>
-                    <textarea id="chat-input" placeholder="Message AI..." rows="1" autofocus></textarea>
-                    <button class="voice-btn" id="voice-btn" title="Voice input">
-                        <i class="fa-solid fa-microphone"></i>
-                    </button>
-                    <button class="send-btn" id="send-btn" title="Send message">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
+                    <div class="input-actions">
+                        <div class="action-group">
+                            <input type="file" id="file-input" style="display: none;" accept="image/*,.pdf,.doc,.docx,.txt">
+                            <button class="icon-btn" id="attach-btn" title="Attach file">
+                                <i class="fa-solid fa-paperclip"></i>
+                            </button>
+                            <button class="icon-btn" id="voice-btn" title="Voice input">
+                                <i class="fa-solid fa-microphone"></i>
+                            </button>
+                            <div class="mode-pill-container">
+                                <div class="mode-pill active" data-mode="text">Chat</div>
+                                <div class="mode-pill" data-mode="image">Image</div>
+                                <div class="mode-pill" data-mode="voice">Voice</div>
+                            </div>
+                        </div>
+                        <div class="footer-note" style="font-size: 0.7rem; color: var(--text-tertiary);">
+                            AI Assistant v2.0
+                        </div>
+                    </div>
                 </div>
                 <div id="toast-container"></div>
-                <div class="footer-text">
-                    AI can make mistakes. Consider verifying important information.
-                </div>
-            </div>
+            </footer>
         </main>
         
         <!-- Mobile Overlay -->
-        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+        <div class="sidebar-overlay" id="sidebar-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:90;"></div>
     </div>
 
     <script type="module" src="script.js"></script>

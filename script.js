@@ -45,13 +45,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
     const voiceBtn = document.getElementById('voice-btn');
-    const inputWrapper = document.querySelector('.input-wrapper');
+    const inputContainer = document.querySelector('.input-container');
     const toastContainer = document.getElementById('toast-container');
     const stopSpeakBtn = document.getElementById('stop-speak-btn');
     const imageStyleSelect = document.getElementById('image-style-select');
     const textModeSelect = document.getElementById('text-mode-select');
     const voiceSelect = document.getElementById('voice-select');
-    const modeBtns = document.querySelectorAll('.mode-btn');
+    const modeBtns = document.querySelectorAll('.mode-pill');
     let currentAppMode = 'text'; // Default mode
     const modelSelect = document.querySelector('.model-selector select');
     
@@ -587,18 +587,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 4. Drag and Drop
-    inputWrapper.addEventListener('dragover', (e) => {
+    inputContainer.addEventListener('dragover', (e) => {
         e.preventDefault();
-        inputWrapper.classList.add('drag-over');
+        inputContainer.classList.add('drag-over');
     });
 
-    inputWrapper.addEventListener('dragleave', () => {
-        inputWrapper.classList.remove('drag-over');
+    inputContainer.addEventListener('dragleave', () => {
+        inputContainer.classList.remove('drag-over');
     });
 
-    inputWrapper.addEventListener('drop', (e) => {
+    inputContainer.addEventListener('drop', (e) => {
         e.preventDefault();
-        inputWrapper.classList.remove('drag-over');
+        inputContainer.classList.remove('drag-over');
         const file = e.dataTransfer.files[0];
         if (file) handleFileUpload(file);
     });
@@ -654,18 +654,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         messageDiv.innerHTML = `
             <div class="message-content">
-                <div class="avatar ${sender}">${avatarContent}</div>
-                <div class="message-body">
+                <div class="msg-avatar ${sender}">${avatarContent}</div>
+                <div class="msg-body">
                     <div class="message-header">
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <span class="sender-name">${senderName}</span>
+                            <span class="msg-sender">${senderName}</span>
                             <span class="message-time">${timeStr}</span>
                         </div>
                         ${!isSkeleton && sender === 'bot' ? `
                             <button class="msg-action-btn speak-btn" title="Listen"><i class="fa-solid fa-volume-high"></i></button>
                         ` : ''}
                     </div>
-                    <div class="message-text">
+                    <div class="msg-text">
                         ${isSkeleton ? `
                             <div class="skeleton-line short"></div>
                             <div class="skeleton-line medium"></div>
@@ -735,14 +735,14 @@ document.addEventListener('DOMContentLoaded', () => {
         themeToggleBtn.querySelector('span').textContent = isLight ? 'Light Mode' : 'Dark Mode';
     });
 
-    mobileMenuBtn.addEventListener('click', () => {
-        sidebar.classList.add('open');
-        sidebarOverlay.classList.add('active');
-    });
-
     sidebarOverlay.addEventListener('click', () => {
         sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('active');
+        sidebarOverlay.style.display = 'none';
+    });
+
+    mobileMenuBtn.addEventListener('click', () => {
+        sidebar.classList.add('open');
+        sidebarOverlay.style.display = 'block';
     });
 
     chatInput.addEventListener('input', function() {
