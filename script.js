@@ -479,23 +479,46 @@ document.addEventListener('DOMContentLoaded', () => {
         voiceBtn.style.display = 'none';
     }
 
-    // 2. Voice Output (Text to Speech)
-    function speak(text) {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
+    // 2. Voice Output (Text to Speech - AI Powered)
+    let currentAudio = null;
+
+    async function speak(text) {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+
+        // Clean text (remove markdown for better speech)
+        const cleanText = text.replace(/[*#`_]/g, '').substring(0, 1000);
         
-        utterance.onstart = () => {
+        // Using Pollinations High-Quality AI Voice (Nova)
+        const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=nova`;
+        
+        currentAudio = new Audio(audioUrl);
+        
+        currentAudio.onplay = () => {
             stopSpeakBtn.style.display = 'flex';
         };
         
-        utterance.onend = () => {
+        currentAudio.onended = () => {
             stopSpeakBtn.style.display = 'none';
+            currentAudio = null;
         };
 
-        window.speechSynthesis.speak(utterance);
+        currentAudio.onerror = () => {
+            console.error("AI Voice failed, falling back to system voice.");
+            const utterance = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utterance);
+        };
+
+        currentAudio.play();
     }
 
     stopSpeakBtn.addEventListener('click', () => {
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
         window.speechSynthesis.cancel();
         stopSpeakBtn.style.display = 'none';
         showToast("Speech stopped", "info");
