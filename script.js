@@ -216,18 +216,27 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.style.height = 'auto';
         sendBtn.setAttribute('disabled', 'true');
 
-        if (!currentChatId) {
-            const chatsRef = collection(db, 'users', currentUser.uid, 'chats');
-            const newChatDoc = await addDoc(chatsRef, {
-                title: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp()
-            });
-            currentChatId = newChatDoc.id;
-            selectChat(currentChatId);
-        }
+        try {
+            if (!currentChatId) {
+                const chatsRef = collection(db, 'users', currentUser.uid, 'chats');
+                const newChatDoc = await addDoc(chatsRef, {
+                    title: text.substring(0, 30) + (text.length > 30 ? '...' : ''),
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                });
+                currentChatId = newChatDoc.id;
+                selectChat(currentChatId);
+            }
 
-        await saveMessageToDB('user', text);
+            await saveMessageToDB('user', text);
+        } catch (error) {
+            console.error("Firebase Error:", error);
+            alert("Error sending message! Please check your Firebase Firestore rules. They might be blocking read/write access. \n\nMake sure you have created a Firestore Database in test mode.");
+            sendBtn.removeAttribute('disabled');
+            chatInput.value = text;
+            return;
+        }
+        
         getAIResponse(text);
     }
 
