@@ -55,6 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputWrapper = document.querySelector('.input-wrapper');
     const toastContainer = document.getElementById('toast-container');
     const stopSpeakBtn = document.getElementById('stop-speak-btn');
+    const imageStyleSelect = document.getElementById('image-style-select');
+    const textModeSelect = document.getElementById('text-mode-select');
+    const voiceSelect = document.getElementById('voice-select');
     const modelSelect = document.querySelector('.model-selector select');
     
     // Auth Elements
@@ -215,7 +218,36 @@ document.addEventListener('DOMContentLoaded', () => {
         if (messageUnsubscribe) messageUnsubscribe();
     }
 
-    // --- Message Logic ---
+    // --- Settings Persistence ---
+    function loadSettings() {
+        const settings = JSON.parse(localStorage.getItem('ai_lab_settings')) || {
+            imageStyle: 'pro',
+            textMode: 'helpful',
+            voice: 'nova'
+        };
+        imageStyleSelect.value = settings.imageStyle;
+        textModeSelect.value = settings.textMode;
+        voiceSelect.value = settings.voice;
+        return settings;
+    }
+
+    function saveSettings() {
+        const settings = {
+            imageStyle: imageStyleSelect.value,
+            textMode: textModeSelect.value,
+            voice: voiceSelect.value
+        };
+        localStorage.setItem('ai_lab_settings', JSON.stringify(settings));
+        showToast("Settings updated!", "info");
+    }
+
+    imageStyleSelect.addEventListener('change', saveSettings);
+    textModeSelect.addEventListener('change', saveSettings);
+    voiceSelect.addEventListener('change', saveSettings);
+
+    const currentSettings = loadSettings();
+
+    // --- Firebase Auth ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
@@ -290,9 +322,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let apiUrl = 'https://text.pollinations.ai/';
         let apiKey = '';
+        const settings = loadSettings();
+        let systemPrompt = 'You are a multimodal assistant created by CHANDRA MONDAL. You can see images if a URL is provided.';
+        
+        if (settings.textMode === 'creative') {
+            systemPrompt = 'You are a master storyteller and creative writer created by CHANDRA MONDAL. Be poetic and imaginative.';
+        } else if (settings.textMode === 'coder') {
+            systemPrompt = 'You are an expert software engineer created by CHANDRA MONDAL. Provide clean, optimized code and technical depth.';
+        }
+
         let apiBody = { 
             messages: [
-                { role: 'system', content: 'You are a multimodal assistant created by CHANDRA MONDAL. You can see images if a URL is provided.' },
+                { role: 'system', content: systemPrompt },
                 { role: 'user', content: mediaUrl ? [
                     { type: 'text', text: userText },
                     { type: 'image_url', image_url: { url: mediaUrl } }
@@ -387,19 +428,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function handleImageGeneration(prompt, skeletonDiv) {
         try {
-            // Clean the prompt to remove "generate an image of" etc.
+            const settings = loadSettings();
             let cleanPrompt = prompt.replace(/generate an image of|generate image of|draw a picture of|draw a|create a picture of|create an image of/gi, '').trim();
             
-            // --- Imagineo-4K PRO CONFIGURATION ---
-            const styleWrapper = `hyper-realistic 8K image of ${cleanPrompt}. ultra-detailed, lifelike, high-resolution, sharp, vibrant colors, photorealistic, cinematic lighting, masterpiece, sharp focus, volumetric lighting, 8k uhd`;
-            
-            const negativePrompt = "(deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, (mutated hands and fingers:1.4), disconnected limbs, mutation, mutated, ugly, disgusting, blurry, amputation";
+            let styleWrapper = "";
+            let negativePrompt = "(deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, (mutated hands and fingers:1.4), disconnected limbs, mutation, mutated, ugly, disgusting, blurry, amputation";
 
-            // Using Pollinations Image API with Imagineo-4K PRO parameters
-            // width=1024, height=1024, model=flux (best for realistic), enhance=true
+            if (settings.imageStyle === 'pro') {
+                styleWrapper = `hyper-realistic 8K image of ${cleanPrompt}. ultra-detailed, lifelike, high-resolution, sharp, vibrant colors, photorealistic, cinematic lighting, masterpiece, sharp focus, volumetric lighting, 8k uhd`;
+            } else if (settings.imageStyle === 'anime') {
+                styleWrapper = `vibrant anime style illustration of ${cleanPrompt}. high quality digital art, studio ghibli style, sharp lines, colorful, aesthetic, 4k`;
+            } else if (settings.imageStyle === 'cinematic') {
+                styleWrapper = `cinematic 3D render of ${cleanPrompt}. unreal engine 5, octane render, volumetric fog, moody lighting, highly detailed, photorealistic, 8k`;
+            } else {
+                styleWrapper = `high quality image of ${cleanPrompt}. 4k resolution, clear, bright`;
+            }
+
             const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(styleWrapper)}?width=1024&height=1024&nologo=true&enhance=true&model=flux&negative=${encodeURIComponent(negativePrompt)}&seed=${Math.floor(Math.random() * 1000000)}`;
             
-            // Wait for image to "load" conceptually
             const img = new Image();
             img.src = imageUrl;
             
@@ -488,11 +534,11 @@ document.addEventListener('DOMContentLoaded', () => {
             currentAudio = null;
         }
 
-        // Clean text (remove markdown for better speech)
+        const settings = loadSettings();
         const cleanText = text.replace(/[*#`_]/g, '').substring(0, 1000);
         
-        // Using Pollinations High-Quality AI Voice (Nova)
-        const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=nova`;
+        // Using selected AI Voice
+        const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(cleanText)}?voice=${settings.voice}`;
         
         currentAudio = new Audio(audioUrl);
         
