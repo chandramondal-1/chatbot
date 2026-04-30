@@ -302,7 +302,9 @@ body {
     flex: 1;
     overflow-y: auto;
     scroll-behavior: smooth;
-    padding-bottom: 120px; /* Space for input */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .chat-container::-webkit-scrollbar {
@@ -316,8 +318,9 @@ body {
 
 /* Welcome Screen */
 .welcome-screen {
+    width: 100%;
     max-width: 800px;
-    margin: 10vh auto;
+    margin: 10vh auto 0;
     padding: 0 2rem;
     text-align: center;
 }
@@ -381,16 +384,20 @@ body {
 
 /* Messages */
 .messages-wrapper {
-    max-width: 800px;
+    width: 100%;
+    max-width: 850px;
     margin: 0 auto;
-    padding: 2rem 1.5rem;
+    padding: 2rem 1rem 10rem 1rem;
+    display: flex;
+    flex-direction: column;
 }
 
 .message {
+    width: 100%;
     display: flex;
-    gap: 1.5rem;
-    margin-bottom: 2.5rem;
-    animation: fadeIn 0.5s ease forwards;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    animation: fadeIn 0.4s ease forwards;
 }
 
 @keyframes fadeIn {
@@ -403,14 +410,14 @@ body {
 }
 
 .msg-avatar {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
 }
 
 .msg-avatar.user {
