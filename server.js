@@ -22,8 +22,7 @@ app.get('/api/proxy/image', async (req, res) => {
         if (openRouterKey) {
             try {
                 let apiModel = "black-forest-labs/flux-pro-1.1";
-                if (model === 'nanobanana-pro') apiModel = "black-forest-labs/flux-pro";
-                if (model === 'seedream-pro') apiModel = "google/gemini-2.0-flash-exp:free";
+                if (model === 'flux') apiModel = "black-forest-labs/flux-pro";
                 
                 const orResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
