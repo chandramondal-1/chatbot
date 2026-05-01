@@ -52,27 +52,28 @@
                 </div>
 
                 <div class="setting-item">
-                    <label>Resolution</label>
-                    <select id="resolution-select">
-                        <option value="Standard">Standard (1K)</option>
-                        <option value="2K">High (2K)</option>
-                        <option value="4K">Ultra HD (4K Agent)</option>
-                    </select>
+                    <label>Sampling Steps</label>
+                    <input type="range" id="steps-slider" min="10" max="100" value="30" step="1">
+                    <div class="slider-value" id="steps-val">30</div>
                 </div>
 
                 <div class="setting-item">
-                    <label>Synthesis Model</label>
+                    <label>CFG Scale</label>
+                    <input type="range" id="cfg-slider" min="1" max="20" value="7.5" step="0.5">
+                    <div class="slider-value" id="cfg-val">7.5</div>
+                </div>
+
+                <div class="setting-item">
+                    <label>Synthesis Engine</label>
                     <select id="image-model-select">
-                        <option value="4k-agent">4K-Agent (TACO Group)</option>
-                        <option value="standard">Standard Diffusion (Fast)</option>
+                        <option value="stable-diffusion-xl">Stable Diffusion XL (A1111)</option>
+                        <option value="flux">Flux Pro (High Detail)</option>
                     </select>
                 </div>
             </div>
 
             <div class="sidebar-footer">
-                <div class="credits" style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.5rem; padding: 0 0.75rem;">
-                    Powered by <a href="https://github.com/taco-group/4KAgent" target="_blank" style="color: inherit;">4K-Agent</a>
-                </div>
+                    Powered by <a href="https://github.com/AUTOMATIC1111/stable-diffusion-webui" target="_blank" style="color: inherit;">AUTOMATIC1111</a> & <a href="https://github.com/taco-group/4KAgent" target="_blank" style="color: inherit;">4K-Agent</a>
                 <button class="footer-btn" id="theme-toggle">
                     <i class="fa-regular fa-sun"></i>
                     <span>Theme</span>
@@ -88,7 +89,7 @@
         <main class="chat-main">
             <header class="chat-header">
                 <i class="fa-solid fa-bars menu-toggle" id="mobile-menu-btn"></i>
-                <div class="model-info">4K-Agent | ChandraXImage</div>
+                <div class="model-info">Stable Diffusion PRO | ChandraXImage</div>
                 <div style="width: 24px;"></div> <!-- Spacer -->
             </header>
             

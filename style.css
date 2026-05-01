@@ -533,3 +533,18 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* Stable Diffusion / A1111 Controls */
+.slider-value {
+    font-size: 0.75rem;
+    color: var(--chandra-purple);
+    font-weight: 700;
+    margin-top: 4px;
+    text-align: right;
+}
+
+input[type="range"] {
+    width: 100%;
+    margin: 8px 0;
+    accent-color: var(--chandra-purple);
+}

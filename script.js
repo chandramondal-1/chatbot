@@ -12,8 +12,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Settings elements
     const imageStyleSelect = document.getElementById('image-style-select');
     const aspectRatioSelect = document.getElementById('aspect-ratio-select');
-    const resolutionSelect = document.getElementById('resolution-select');
     const imageModelSelect = document.getElementById('image-model-select');
+    const stepsSlider = document.getElementById('steps-slider');
+    const cfgSlider = document.getElementById('cfg-slider');
+    const stepsVal = document.getElementById('steps-val');
+    const cfgVal = document.getElementById('cfg-val');
     const themeToggleBtn = document.getElementById('theme-toggle');
 
     let currentChatId = null;
@@ -48,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Core Generation Logic (Pro-Grade Stability) ---
+    // --- Core Generation Logic (A1111 Optimized) ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
@@ -73,26 +76,23 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
         else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
 
-        const scale = settings.resolution === '4K' ? 1.5 : 1.0;
-        w = Math.floor(w * scale);
-        h = Math.floor(h * scale);
-
+        // Prompt Engineering (A1111 / Stable Diffusion style)
         let finalPrompt = cleanPrompt;
-        if (settings.model === '4k-agent') {
-            finalPrompt = `4K-Agent professional synthesis: ${cleanPrompt}. Ultra-high resolution, masterpiece, detailed textures, sharp focus`;
+        if (settings.model === 'stable-diffusion-xl') {
+            finalPrompt = `${cleanPrompt}, masterpiece, highly detailed, sharp focus, 8k resolution, cinematic lighting, ultra-realistic textures`;
         }
 
-        if (settings.imageStyle === 'anime') finalPrompt += `, anime style, colorful`;
-        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic render, highly detailed`;
-        else if (settings.imageStyle === 'artistic') finalPrompt += `, artistic oil painting style`;
+        if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime style, colorful, digital illustration`;
+        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render, unreal engine 5, octane render`;
+        else if (settings.imageStyle === 'artistic') finalPrompt += `, expressive oil painting, fine art style`;
 
         let retries = 0;
         const maxRetries = 2;
 
         const attemptSynthesis = () => {
             const seed = Math.floor(Math.random() * 1000000);
-            // Use the most stable URL format available
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
+            // Enhanced URL with A1111 parameters
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=${settings.model}&steps=${settings.steps}&cfg=${settings.cfg}`;
             
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -100,12 +100,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeout = setTimeout(() => {
                 img.src = "";
                 handleFailure();
-            }, 40000); // 40s timeout for high-res
+            }, 45000); 
 
             img.onload = () => {
                 clearTimeout(timeout);
                 if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                const replyText = `**Prompt:** ${cleanPrompt}\n**Status:** Synthesis Successful (4K-Agent)`;
+                const replyText = `**Prompt:** ${cleanPrompt}\n**Engine:** Stable Diffusion (Steps: ${settings.steps} | CFG: ${settings.cfg})`;
                 appendMessage('bot', replyText, false, new Date(), imageUrl);
                 showToast("Synthesis ready!");
                 sendBtn.removeAttribute('disabled');
@@ -122,11 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const handleFailure = () => {
             if (retries < maxRetries) {
                 retries++;
-                console.warn(`Synthesis retry ${retries}/${maxRetries}...`);
                 attemptSynthesis();
             } else {
                 if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                appendMessage('bot', "The synthesis engine is currently under high load. Please try a different prompt or wait a moment.");
+                appendMessage('bot', "The synthesis engine is overloaded. Please try lower Sampling Steps or CFG Scale.");
                 sendBtn.removeAttribute('disabled');
             }
         };
@@ -185,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `ChandraXImage-${Date.now()}.png`;
+                link.download = `StableDiffusion-${Date.now()}.png`;
                 link.click();
             }, 'image/png');
         } catch (e) {
@@ -205,25 +204,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return { 
             imageStyle: imageStyleSelect.value,
             aspectRatio: aspectRatioSelect.value,
-            resolution: resolutionSelect.value,
-            model: imageModelSelect.value
+            model: imageModelSelect.value,
+            steps: stepsSlider.value,
+            cfg: cfgSlider.value
         };
     }
 
-    function createNewChat() {
-        messagesWrapper.innerHTML = '';
-        welcomeScreen.style.display = 'flex';
-        currentChatId = Date.now().toString();
-    }
-
     // --- Listeners ---
-    [imageStyleSelect, aspectRatioSelect, resolutionSelect, imageModelSelect].forEach(el => {
+    stepsSlider.oninput = () => { stepsVal.innerText = stepsSlider.value; };
+    cfgSlider.oninput = () => { cfgVal.innerText = cfgSlider.value; };
+
+    [imageStyleSelect, aspectRatioSelect, imageModelSelect, stepsSlider, cfgSlider].forEach(el => {
         el.onchange = () => localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
     });
 
     themeToggleBtn.onclick = () => document.body.classList.toggle('light-mode');
     mobileMenuBtn.onclick = () => sidebar.classList.toggle('open');
-    newChatBtn.onclick = createNewChat;
+    newChatBtn.onclick = () => { messagesWrapper.innerHTML = ''; welcomeScreen.style.display = 'flex'; };
     
     chatInput.oninput = function() {
         this.style.height = 'auto';
