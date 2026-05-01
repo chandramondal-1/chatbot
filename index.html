@@ -142,11 +142,15 @@
                 <div class="messages-wrapper" id="messages-wrapper"></div>
             </div>
 
-            <!-- Input Area -->
             <footer class="input-area">
                 <div class="input-container">
+                    <div id="attachment-preview" class="attachment-preview"></div>
                     <div class="input-row">
-                        <textarea id="chat-input" placeholder="Describe the image (e.g. 'A black hole in 4K')..." rows="1"></textarea>
+                        <button class="attach-btn" id="attach-btn" title="Attach files">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                        <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.mp3,.mp4" style="display: none;">
+                        <textarea id="chat-input" placeholder="Describe the image or upload files..." rows="1"></textarea>
                         <button class="send-btn" id="send-btn" disabled>
                             <i class="fa-solid fa-arrow-up"></i>
                         </button>

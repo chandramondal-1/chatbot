@@ -22,20 +22,80 @@ document.addEventListener('DOMContentLoaded', () => {
     const cfgVal = document.getElementById('cfg-val');
     const themeToggleBtn = document.getElementById('theme-toggle');
 
-    let currentChatId = null;
+    // Attachment elements
+    const attachBtn = document.getElementById('attach-btn');
+    const fileInput = document.getElementById('file-input');
+    const attachmentPreview = document.getElementById('attachment-preview');
 
-    // --- Connection Mode Toggle ---
-    connectionMode.onchange = () => {
-        localSettings.style.display = connectionMode.value === 'cloud' ? 'none' : 'block';
-        if (connectionMode.value === 'a1111') apiUrlInput.placeholder = "http://127.0.0.1:7860";
-        if (connectionMode.value === 'localai') apiUrlInput.placeholder = "http://127.0.0.1:8080";
-        localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
+    let currentChatId = null;
+    let attachments = [];
+
+    // --- Attachment Logic ---
+    attachBtn.onclick = () => fileInput.click();
+
+    fileInput.onchange = (e) => {
+        const files = Array.from(e.target.files);
+        files.forEach(file => {
+            if (attachments.length >= 5) {
+                showToast("Max 5 files allowed", "error");
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (re) => {
+                const attachment = {
+                    name: file.name,
+                    size: (file.size / 1024).toFixed(1) + " KB",
+                    type: file.type,
+                    data: re.target.result,
+                    id: Date.now() + Math.random()
+                };
+                attachments.push(attachment);
+                renderAttachmentPreviews();
+                sendBtn.disabled = false;
+            };
+            
+            if (file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/')) {
+                reader.readAsDataURL(file);
+            } else {
+                reader.readAsText(file.slice(0, 100)); // Just read a bit for text/pdf
+                // For PDF we just store the name/info
+                reader.onload = () => {
+                    attachments.push({
+                        name: file.name,
+                        size: (file.size / 1024).toFixed(1) + " KB",
+                        type: file.type,
+                        data: null, // Don't store full PDF data in memory
+                        id: Date.now() + Math.random()
+                    });
+                    renderAttachmentPreviews();
+                    sendBtn.disabled = false;
+                };
+            }
+        });
+        fileInput.value = '';
+    };
+
+    function renderAttachmentPreviews() {
+        attachmentPreview.innerHTML = attachments.map(att => `
+            <div class="preview-pill">
+                ${att.type.startsWith('image/') ? `<img src="${att.data}">` : `<i class="fa-solid fa-file"></i>`}
+                <span>${att.name}</span>
+                <i class="fa-solid fa-xmark remove-attachment" onclick="removeAttachment(${att.id})"></i>
+            </div>
+        `).join('');
+    }
+
+    window.removeAttachment = (id) => {
+        attachments = attachments.filter(att => att.id !== id);
+        renderAttachmentPreviews();
+        if (attachments.length === 0 && !chatInput.value.trim()) sendBtn.disabled = true;
     };
 
     // --- History Logic ---
     function saveToHistory(prompt) {
         let history = JSON.parse(localStorage.getItem('chandra_history')) || [];
-        const cleanItem = prompt.trim();
+        const cleanItem = prompt.trim() || (attachments.length > 0 ? "Attached files" : "New Chat");
         if (!history.includes(cleanItem)) {
             history.unshift(cleanItem);
             if (history.length > 20) history.pop();
@@ -76,7 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Core Synthesis Engine (Cloud & Local Hub) ---
     async function sendMessage() {
         const text = chatInput.value.trim();
-        if (!text) return;
+        const currentAttachments = [...attachments];
+        if (!text && currentAttachments.length === 0) return;
 
         saveToHistory(text);
         if (!currentChatId) currentChatId = Date.now().toString();
@@ -85,12 +146,14 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.style.height = 'auto';
         sendBtn.disabled = true;
         welcomeScreen.style.display = 'none';
+        attachments = [];
+        renderAttachmentPreviews();
 
-        appendMessage('user', text);
+        appendMessage('user', text, false, new Date(), null, currentAttachments);
         const skeletonDiv = appendMessage('bot', '', true);
         
         const settings = loadSettings();
-        const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim();
+        const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim() || "Artistic synthesis";
 
         // 1. Resolution & Style
         let w = 1024, h = 1024;
@@ -108,23 +171,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (settings.mode === 'cloud') {
                 await performCloudSynthesis(finalPrompt, w, h, settings, skeletonDiv);
             } else if (settings.mode === 'a1111' || settings.mode === 'localai') {
-                // If in Local mode, we use the specific API call for that hub
                 if (settings.mode === 'a1111') await performA1111Synthesis(finalPrompt, w, h, settings, skeletonDiv);
                 else await performLocalAISynthesis(finalPrompt, w, h, settings, skeletonDiv);
             }
         } catch (error) {
             if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-            appendMessage('bot', `Synthesis Error: ${error.message}. Ensure your local server is running and CORS is enabled.`);
+            appendMessage('bot', `Synthesis Error: ${error.message}. Ensure your local server is running.`);
             sendBtn.removeAttribute('disabled');
         }
     }
 
-    // --- Cloud Synthesis (Differentiates based on Model selection) ---
+    // --- Synthesis Implementations ---
     async function performCloudSynthesis(prompt, w, h, settings, skeleton) {
         const seed = Math.floor(Math.random() * 1000000);
         const engineLabel = settings.model === 'automatic1111' ? 'A1111-Style' : 'LocalAI-Style';
         const cloudPrompt = `${engineLabel} synthesis: ${prompt}, masterpiece, (steps: ${settings.steps}), (cfg: ${settings.cfg})`;
-        
         const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cloudPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
         
         const img = new Image();
@@ -134,7 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = imageUrl;
     }
 
-    // --- AUTOMATIC1111 API Integration ---
     async function performA1111Synthesis(prompt, w, h, settings, skeleton) {
         const url = settings.apiUrl || "http://127.0.0.1:7860";
         const response = await fetch(`${url}/sdapi/v1/txt2img`, {
@@ -152,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
         finalizeSynthesis(`data:image/png;base64,${data.images[0]}`, "Local A1111", settings, skeleton);
     }
 
-    // --- LocalAI API Integration ---
     async function performLocalAISynthesis(prompt, w, h, settings, skeleton) {
         const url = settings.apiUrl || "http://127.0.0.1:8080";
         const response = await fetch(`${url}/v1/images/generations`, {
@@ -175,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI Helpers ---
-    function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null) {
+    function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
         const avatarContent = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
@@ -194,6 +253,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>`;
         }
 
+        // Attachments Rendering
+        let attachmentHtml = '';
+        if (currentAttachments && currentAttachments.length > 0) {
+            attachmentHtml = '<div class="message-attachments" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">';
+            currentAttachments.forEach(att => {
+                if (att.type.startsWith('image/')) {
+                    attachmentHtml += `<img src="${att.data}" style="max-width: 250px; border-radius: 8px; border: 1px solid var(--border-color);">`;
+                } else if (att.type.startsWith('audio/')) {
+                    attachmentHtml += `<audio controls src="${att.data}"></audio>`;
+                } else if (att.type.startsWith('video/')) {
+                    attachmentHtml += `<video controls src="${att.data}"></video>`;
+                } else {
+                    const icon = att.name.endsWith('.pdf') ? 'fa-file-pdf' : 'fa-file-lines';
+                    attachmentHtml += `
+                        <div class="file-card">
+                            <i class="fa-solid ${icon} file-icon"></i>
+                            <div class="file-info">
+                                <span class="file-name">${att.name}</span>
+                                <span class="file-size">${att.size}</span>
+                            </div>
+                        </div>`;
+                }
+            });
+            attachmentHtml += '</div>';
+        }
+
         messageDiv.innerHTML = `
             <div class="msg-avatar ${sender}">${avatarContent}</div>
             <div class="msg-body">
@@ -204,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="msg-text">
                     ${isSkeleton ? '<div class="skeleton-line medium"></div><div class="skeleton-line"></div>' : marked.parse(text)}
                 </div>
+                ${attachmentHtml}
                 ${mediaContent}
             </div>
         `;
@@ -267,7 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chatInput.oninput = function() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
-        sendBtn.disabled = !this.value.trim();
+        sendBtn.disabled = !this.value.trim() && attachments.length === 0;
     };
     
     chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };

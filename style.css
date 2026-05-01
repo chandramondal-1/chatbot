@@ -585,3 +585,96 @@ input[type="range"] {
     color: #ff4d4d;
     background: rgba(255, 77, 77, 0.1);
 }
+
+/* Attachment & Multi-Modal Styles */
+.attach-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 10px;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.attach-btn:hover {
+    color: var(--chandra-purple);
+}
+
+.attachment-preview {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 10px 10px 10px;
+}
+
+.preview-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 4px 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: white;
+    position: relative;
+}
+
+.preview-pill img {
+    width: 24px;
+    height: 24px;
+    object-fit: cover;
+    border-radius: 4px;
+}
+
+.remove-attachment {
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.remove-attachment:hover {
+    color: #ff4d4d;
+}
+
+.file-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    width: fit-content;
+    min-width: 200px;
+}
+
+.file-icon {
+    font-size: 1.5rem;
+    color: var(--chandra-purple);
+}
+
+.file-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.file-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.file-size {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+audio, video {
+    width: 100%;
+    margin-top: 10px;
+    border-radius: 8px;
+}
