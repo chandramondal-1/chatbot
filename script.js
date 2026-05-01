@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Firebase (REPLACE WITH YOUR KEYS) ---
+    // --- Firebase (GUEST MODE ENABLED BY DEFAULT) ---
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
         authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -10,9 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     let auth = null;
-    if (typeof firebase !== 'undefined') {
-        firebase.initializeApp(firebaseConfig);
-        auth = firebase.auth();
+    // Only initialize if keys are provided
+    if (typeof firebase !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        try {
+            firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+        } catch (e) { console.warn("Firebase Init bypassed."); }
     }
 
     // --- Elements ---
@@ -75,21 +78,31 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSliderLabels();
         renderHistory();
 
-        // Enhanced Auth State Listener
+        // Enhanced Auth State & Guest Listener
         if (auth) {
             auth.onAuthStateChanged(user => {
                 currentUser = user;
-                if (user) {
-                    if (loginBtn) loginBtn.style.display = 'none';
-                    if (userProfile) userProfile.style.display = 'block';
-                    if (userAvatar) userAvatar.src = user.photoURL || 'assets/bot-logo.png';
-                    if (userName) userName.innerText = user.displayName || 'User';
-                    console.log("User logged in:", user.displayName);
-                } else {
-                    if (loginBtn) loginBtn.style.display = 'flex';
-                    if (userProfile) userProfile.style.display = 'none';
-                }
+                updateUserUI(user);
             });
+        } else {
+            updateUserUI(null); // Force Guest Mode
+        }
+    }
+
+    function updateUserUI(user) {
+        if (user) {
+            if (loginBtn) loginBtn.style.display = 'none';
+            if (userProfile) userProfile.style.display = 'block';
+            if (userAvatar) userAvatar.src = user.photoURL || 'assets/bot-logo.png';
+            if (userName) userName.innerText = user.displayName || 'User';
+        } else {
+            if (loginBtn) loginBtn.style.display = 'flex';
+            if (userProfile) {
+                userProfile.style.display = 'block';
+                userAvatar.src = 'assets/bot-logo.png';
+                userName.innerText = 'Guest Session';
+                if (logoutBtn) logoutBtn.style.display = 'none';
+            }
         }
     }
 
@@ -244,12 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CHANDRA x IMAGE Core ---
     async function sendMessage() {
-        if (!currentUser) {
-            showToast("Login required for Extreme Synthesis", "info");
-            if (loginBtn) loginBtn.click();
-            return;
-        }
-
         const text = chatInput.value.trim();
         const currentAttachments = [...attachments];
         if (!text && currentAttachments.length === 0) return;
