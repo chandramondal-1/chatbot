@@ -12,6 +12,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 </head>
 <body>
+    <div class="bg-mesh"></div>
     <div class="app-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -60,8 +61,11 @@
         <main class="chat-main">
             <header class="chat-header">
                 <i class="fa-solid fa-bars menu-toggle" id="mobile-menu-btn"></i>
-                <div class="model-info">CHANDRA x IMAGE | EvoLink AI PRO</div>
-                <div style="width: 24px;"></div> <!-- Spacer -->
+                <div class="model-info">CHANDRA x IMAGE | <span style="opacity:0.6; font-weight:400;">ULTRA PRO SYNTHESIS</span></div>
+                <div class="header-actions">
+                    <i class="fa-solid fa-bolt" style="color: var(--accent-secondary); font-size: 0.8rem; margin-right: 5px;"></i>
+                    <span style="font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; color: var(--accent-secondary);">32K ACTIVE</span>
+                </div>
             </header>
             
             <div class="chat-container" id="chat-container">
