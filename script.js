@@ -658,36 +658,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         messageDiv.innerHTML = `
-            <div class="message-content">
-                <div class="msg-avatar ${sender}">${avatarContent}</div>
-                <div class="msg-body">
-                    <div class="message-header">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <span class="msg-sender">${senderName}</span>
-                            <span class="message-time">${timeStr}</span>
-                        </div>
-                        ${!isSkeleton && sender === 'bot' ? `
-                            <button class="msg-action-btn speak-btn" title="Listen"><i class="fa-solid fa-volume-high"></i></button>
-                        ` : ''}
+            <div class="msg-avatar ${sender}">${avatarContent}</div>
+            <div class="msg-body">
+                <div class="message-header">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span class="msg-sender">${senderName}</span>
+                        <span class="message-time">${timeStr}</span>
                     </div>
-                    <div class="msg-text">
-                        ${isSkeleton ? `
-                            <div class="skeleton-line short"></div>
-                            <div class="skeleton-line medium"></div>
-                            <div class="skeleton-line"></div>
-                        ` : formatText(text)}
-                    </div>
-                    ${mediaContent}
                     ${!isSkeleton && sender === 'bot' ? `
-                        <div class="message-actions">
-                            <div class="reaction-group">
-                                <button class="msg-action-btn thumb-up" title="Helpful"><i class="fa-regular fa-thumbs-up"></i></button>
-                                <button class="msg-action-btn thumb-down" title="Not helpful"><i class="fa-regular fa-thumbs-down"></i></button>
-                            </div>
-                            <button class="msg-action-btn copy-btn" title="Copy"><i class="fa-regular fa-copy"></i> Copy</button>
-                        </div>
+                        <button class="msg-action-btn speak-btn" title="Listen"><i class="fa-solid fa-volume-high"></i></button>
                     ` : ''}
                 </div>
+                <div class="msg-text">
+                    ${isSkeleton ? `
+                        <div class="skeleton-line short"></div>
+                        <div class="skeleton-line medium"></div>
+                        <div class="skeleton-line"></div>
+                    ` : formatText(text)}
+                </div>
+                ${mediaContent}
+                ${!isSkeleton && sender === 'bot' ? `
+                    <div class="message-actions">
+                        <div class="reaction-group">
+                            <button class="msg-action-btn thumb-up" title="Helpful"><i class="fa-regular fa-thumbs-up"></i></button>
+                            <button class="msg-action-btn thumb-down" title="Not helpful"><i class="fa-regular fa-thumbs-down"></i></button>
+                        </div>
+                        <button class="msg-action-btn copy-btn" title="Copy"><i class="fa-regular fa-copy"></i> Copy</button>
+                    </div>
+                ` : ''}
             </div>
         `;
 

@@ -310,6 +310,8 @@ body {
     max-width: 800px;
     margin: 0 auto;
     padding: 2rem 1.5rem 12rem 1.5rem;
+    display: flex;
+    flex-direction: column;
 }
 
 .message {
