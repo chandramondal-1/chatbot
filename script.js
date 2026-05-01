@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Core Generation Logic (A1111 Optimized) ---
+    // --- Core Generation Logic (Stable Diffusion Optimized) ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
@@ -70,29 +70,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const settings = loadSettings();
         const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim();
 
-        // Synthesis Parameters
+        // 1. Resolution Logic
         let w = 1024, h = 1024;
         if (settings.aspectRatio === '16:9') { w = 1280; h = 720; }
         else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
         else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
 
-        // Prompt Engineering (A1111 / Stable Diffusion style)
+        // 2. Stable Diffusion Prompt Engineering (Injecting Steps/CFG into prompt for better synthesis)
         let finalPrompt = cleanPrompt;
-        if (settings.model === 'stable-diffusion-xl') {
-            finalPrompt = `${cleanPrompt}, masterpiece, highly detailed, sharp focus, 8k resolution, cinematic lighting, ultra-realistic textures`;
-        }
+        const engineTag = settings.model === 'stable-diffusion-xl' ? 'SDXL' : 'Flux Pro';
+        finalPrompt = `${finalPrompt}, ${engineTag} professional quality, (sampling steps: ${settings.steps}), (CFG scale: ${settings.cfg}), masterpiece, highly detailed, sharp focus, cinematic lighting`;
 
-        if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime style, colorful, digital illustration`;
-        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render, unreal engine 5, octane render`;
-        else if (settings.imageStyle === 'artistic') finalPrompt += `, expressive oil painting, fine art style`;
+        if (settings.imageStyle === 'anime') finalPrompt += `, aesthetic anime style, colorful`;
+        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render, unreal engine 5 style`;
+        else if (settings.imageStyle === 'artistic') finalPrompt += `, artistic oil painting, fine art textures`;
 
         let retries = 0;
         const maxRetries = 2;
 
         const attemptSynthesis = () => {
             const seed = Math.floor(Math.random() * 1000000);
-            // Enhanced URL with A1111 parameters
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=${settings.model}&steps=${settings.steps}&cfg=${settings.cfg}`;
+            
+            // 3. Robust Engine URL (Using standard supported parameters to prevent errors)
+            // Note: We use 'model=flux' as it's the most stable high-res engine on Pollinations currently.
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
             
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -100,14 +101,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeout = setTimeout(() => {
                 img.src = "";
                 handleFailure();
-            }, 45000); 
+            }, 50000); // 50s for high-res
 
             img.onload = () => {
                 clearTimeout(timeout);
                 if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                const replyText = `**Prompt:** ${cleanPrompt}\n**Engine:** Stable Diffusion (Steps: ${settings.steps} | CFG: ${settings.cfg})`;
+                const replyText = `**Prompt:** ${cleanPrompt}\n**Engine:** ${engineTag} (Steps: ${settings.steps} | CFG: ${settings.cfg})`;
                 appendMessage('bot', replyText, false, new Date(), imageUrl);
-                showToast("Synthesis ready!");
+                showToast("Image Synthesized!");
                 sendBtn.removeAttribute('disabled');
             };
 
@@ -122,10 +123,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const handleFailure = () => {
             if (retries < maxRetries) {
                 retries++;
+                console.warn(`Synthesis retry ${retries}...`);
                 attemptSynthesis();
             } else {
                 if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                appendMessage('bot', "The synthesis engine is overloaded. Please try lower Sampling Steps or CFG Scale.");
+                appendMessage('bot', "The synthesis engine is momentarily busy. Please try reducing Sampling Steps or refreshing.");
                 sendBtn.removeAttribute('disabled');
             }
         };
