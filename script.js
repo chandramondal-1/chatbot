@@ -76,12 +76,13 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
         else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
 
-        // 2. Stable Diffusion PRO Synthesis (Optimized for A1111)
-        let finalPrompt = `${cleanPrompt}, masterpiece, highly detailed, professional stable diffusion quality, (sampling steps: ${settings.steps}), (CFG scale: ${settings.cfg}), sharp focus, cinematic lighting`;
+        // 2. Pro-Grade Synthesis Mode (A1111 vs LocalAI)
+        let modeTag = settings.model === 'automatic1111' ? 'A1111 Stable Diffusion' : 'LocalAI Open-Source';
+        let finalPrompt = `${modeTag} synthesis: ${cleanPrompt}, masterpiece, highly detailed, professional quality, (sampling steps: ${settings.steps}), (CFG scale: ${settings.cfg}), sharp focus`;
 
-        if (settings.imageStyle === 'anime') finalPrompt += `, aesthetic anime style, colorful`;
-        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render, unreal engine 5 style`;
-        else if (settings.imageStyle === 'artistic') finalPrompt += `, artistic oil painting, fine art textures`;
+        if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime style`;
+        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render`;
+        else if (settings.imageStyle === 'artistic') finalPrompt += `, fine art oil painting`;
 
         let retries = 0;
         const maxRetries = 2;
@@ -89,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const attemptSynthesis = () => {
             const seed = Math.floor(Math.random() * 1000000);
             
-            // 3. Robust Engine URL (Using standard SDXL-compatible engine)
+            // 3. Robust Engine URL
             const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
             
             const img = new Image();
@@ -103,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
             img.onload = () => {
                 clearTimeout(timeout);
                 if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                const replyText = `**Prompt:** ${cleanPrompt}\n**Engine:** Stable Diffusion Pro (Steps: ${settings.steps} | CFG: ${settings.cfg})`;
+                const replyText = `**Prompt:** ${cleanPrompt}\n**Engine:** ${modeTag} (Steps: ${settings.steps} | CFG: ${settings.cfg})`;
                 appendMessage('bot', replyText, false, new Date(), imageUrl);
                 showToast("Synthesis ready!");
                 sendBtn.removeAttribute('disabled');
