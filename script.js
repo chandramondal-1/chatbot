@@ -163,30 +163,49 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!historyList) return;
         const history = JSON.parse(localStorage.getItem('chandra_history')) || [];
         historyList.innerHTML = history.map((item, index) => `
-            <li class="history-item">
-                <div class="history-content" onclick="loadHistoryItem('${item.replace(/'/g, "\\'")}')">
+            <li class="history-item" data-prompt="${encodeURIComponent(item)}">
+                <div class="history-content">
                     <i class="fa-solid fa-image"></i>
                     <span class="history-text">${item}</span>
                 </div>
-                <button class="history-delete" onclick="deleteHistoryItem(${index})">
+                <button class="history-delete" data-index="${index}">
                     <i class="fa-solid fa-trash-can"></i>
                 </button>
             </li>
         `).join('');
+
+        // Add Listeners
+        document.querySelectorAll('.history-content').forEach(el => {
+            el.onclick = () => {
+                const prompt = decodeURIComponent(el.closest('.history-item').dataset.prompt);
+                loadHistoryItem(prompt);
+            };
+        });
+
+        document.querySelectorAll('.history-delete').forEach(el => {
+            el.onclick = (e) => {
+                e.stopPropagation();
+                deleteHistoryItem(parseInt(el.dataset.index));
+            };
+        });
     }
 
-    window.loadHistoryItem = (prompt) => {
+    function loadHistoryItem(prompt) {
         chatInput.value = prompt;
-        if (window.innerWidth <= 768) { sidebar.classList.remove('open'); sidebarOverlay.style.display = 'none'; }
+        if (window.innerWidth <= 768) { 
+            sidebar.classList.remove('open'); 
+            if (sidebarOverlay) sidebarOverlay.style.display = 'none'; 
+        }
         sendMessage();
-    };
+    }
 
-    window.deleteHistoryItem = (index) => {
+    function deleteHistoryItem(index) {
         let history = JSON.parse(localStorage.getItem('chandra_history')) || [];
         history.splice(index, 1);
         localStorage.setItem('chandra_history', JSON.stringify(history));
         renderHistory();
-    };
+        showToast("Item removed", "info");
+    }
 
     // --- Core Synthesis ---
     async function sendMessage() {
