@@ -40,7 +40,7 @@ app.get('/api/proxy/image', async (req, res) => {
                     },
                     body: JSON.stringify({
                         model: apiModel,
-                        messages: [{ role: "user", content: `Generate a high-resolution ${resolution || '4K'} ${aspect_ratio || '1:1'} image: ${prompt}` }],
+                        messages: [{ role: "user", content: `Generate an ultra-high-resolution 4K ${aspect_ratio || '1:1'} professional image: ${prompt}. ultra-detailed, sharp focus, masterpiece, high quality.` }],
                         modalities: ["image"]
                     })
                 });
@@ -68,23 +68,29 @@ app.get('/api/proxy/image', async (req, res) => {
         }
 
         // Fallback to Pollinations (Diffusion-4K logic)
-        console.log("Using Pollinations/Diffusion-4K engine...");
+        console.log("Using Pollinations/Diffusion-4K engine for Ultra HD...");
         
         // Map aspect ratio to width/height
         let width = 1024, height = 1024;
-        if (aspect_ratio === '16:9') { width = 1344; height = 768; }
-        else if (aspect_ratio === '9:16') { width = 768; height = 1344; }
-        else if (aspect_ratio === '4:3') { width = 1248; height = 936; }
-        else if (aspect_ratio === '3:4') { width = 936; height = 1248; }
-        else if (aspect_ratio === '21:9') { width = 1536; height = 640; }
+        if (aspect_ratio === '16:9') { width = 1792; height = 1024; }
+        else if (aspect_ratio === '9:16') { width = 1024; height = 1792; }
+        else if (aspect_ratio === '4:3') { width = 1440; height = 1080; }
+        else if (aspect_ratio === '3:4') { width = 1080; height = 1440; }
+        else if (aspect_ratio === '21:9') { width = 2048; height = 864; }
 
-        if (resolution === '4K') { width = Math.min(width * 2, 2048); height = Math.min(height * 2, 2048); }
-        else if (resolution === '2K') { width = Math.min(Math.round(width * 1.5), 2048); height = Math.min(Math.round(height * 1.5), 2048); }
+        if (resolution === '4K') { 
+            width = Math.min(width * 1.5, 3072); 
+            height = Math.min(height * 1.5, 3072); 
+        }
+        else if (resolution === '2K') { 
+            width = Math.min(Math.round(width * 1.25), 2048); 
+            height = Math.min(Math.round(height * 1.25), 2048); 
+        }
 
         let pollinationsModel = 'flux'; 
-        if (resolution === '4K' || resolution === '2K' || model === 'nanobanana-pro' || model === 'diffusion-4k') pollinationsModel = 'nanobanana-pro';
+        if (resolution === '4K' || resolution === '2K' || model === 'nanobanana-pro' || model === 'diffusion-4k') pollinationsModel = 'flux-pro';
 
-        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=${pollinationsModel}&seed=${Math.floor(Math.random() * 1000000)}&nologo=true&enhance=true`;
+        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=${pollinationsModel}&seed=${Math.floor(Math.random() * 1000000)}&nologo=true&enhance=true&quality=100&hd=true`;
         
         const response = await fetch(pollinationsUrl);
 

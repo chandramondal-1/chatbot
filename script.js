@@ -168,13 +168,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const settings = JSON.parse(localStorage.getItem('ai_lab_settings')) || { 
             imageStyle: 'pro',
             aspectRatio: '1:1',
-            resolution: 'Standard',
-            model: 'flux'
+            resolution: '4K',
+            model: 'diffusion-4k'
         };
         if (imageStyleSelect) imageStyleSelect.value = settings.imageStyle || 'pro';
         if (aspectRatioSelect) aspectRatioSelect.value = settings.aspectRatio || '1:1';
-        if (resolutionSelect) resolutionSelect.value = settings.resolution || 'Standard';
-        if (imageModelSelect) imageModelSelect.value = settings.model || 'flux';
+        if (resolutionSelect) resolutionSelect.value = settings.resolution || '4K';
+        if (imageModelSelect) imageModelSelect.value = settings.model || 'diffusion-4k';
         return settings;
     }
 
