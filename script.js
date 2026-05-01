@@ -94,12 +94,56 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderAttachmentPreviews() {
         attachmentPreview.innerHTML = attachments.map(att => `
             <div class="preview-pill">
-                ${att.type.startsWith('image/') ? `<img src="${att.data}">` : `<i class="fa-solid fa-file"></i>`}
+                ${att.type.startsWith('image/') ? `
+                    <img src="${att.data}">
+                    <i class="fa-solid fa-wand-sparkles interrogate-btn" title="Interrogate (EvoLink AI)" onclick="interrogateImage(${att.id})"></i>
+                ` : `<i class="fa-solid fa-file"></i>`}
                 <span title="${att.name}">${att.name.length > 10 ? att.name.substring(0, 10) + '...' : att.name}</span>
                 <i class="fa-solid fa-xmark remove-attachment" onclick="removeAttachment(${att.id})"></i>
             </div>
         `).join('');
     }
+
+    window.interrogateImage = async (id) => {
+        const att = attachments.find(a => a.id === id);
+        if (!att || !att.data) return;
+
+        showToast("Analyzing image (EvoLink AI)...", "info");
+        
+        try {
+            // Using Pollinations Text API as a Vision Interrogator
+            const systemPrompt = "You are an expert prompt engineer. Analyze the image and generate a professional, highly detailed prompt for Stable Diffusion (A1111 style). Include lighting, style, and composition keywords. Return ONLY the prompt text.";
+            
+            const response = await fetch('https://text.pollinations.ai/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: [
+                            { type: 'text', text: "Describe this image for AI generation." },
+                            { type: 'image_url', image_url: { url: att.data } }
+                        ]}
+                    ],
+                    model: 'gpt-4o' 
+                })
+            });
+
+            if (!response.ok) throw new Error("Vision engine busy");
+            const promptText = await response.text();
+            
+            chatInput.value = promptText.trim();
+            chatInput.style.height = 'auto';
+            chatInput.style.height = chatInput.scrollHeight + 'px';
+            sendBtn.disabled = false;
+            showToast("Prompt Extracted!", "success");
+        } catch (e) {
+            showToast("Interrogation failed. Fallback active.", "error");
+            // Fallback: Simple keyword extraction (simulated)
+            chatInput.value = "A professional masterpiece of " + att.name.split('.')[0] + ", highly detailed, cinematic lighting";
+            sendBtn.disabled = false;
+        }
+    };
 
     window.removeAttachment = (id) => {
         attachments = attachments.filter(att => att.id !== id);
