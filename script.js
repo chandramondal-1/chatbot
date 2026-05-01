@@ -8,7 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyList = document.getElementById('history-list');
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const sidebar = document.querySelector('.sidebar');
-    const sidebarOverlay = document.createElement('div');
     
     // Settings elements
     const imageStyleSelect = document.getElementById('image-style-select');
@@ -17,18 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageModelSelect = document.getElementById('image-model-select');
     const themeToggleBtn = document.getElementById('theme-toggle');
 
-    // Sidebar Overlay for mobile
-    sidebarOverlay.className = 'sidebar-overlay';
-    document.body.appendChild(sidebarOverlay);
-
     let currentChatId = null;
-    let currentUser = null;
 
-    const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('render.com')
-        ? '' 
-        : 'https://chatbot-1-dxrx.onrender.com';
-
-    // --- History Logic (Local Storage) ---
+    // --- History Logic ---
     function saveToHistory(prompt) {
         let history = JSON.parse(localStorage.getItem('chandra_history')) || [];
         if (!history.includes(prompt)) {
@@ -50,14 +40,14 @@ document.addEventListener('DOMContentLoaded', () => {
         `).join('');
 
         document.querySelectorAll('.history-item').forEach(li => {
-            li.addEventListener('click', () => {
+            li.onclick = () => {
                 chatInput.value = li.querySelector('.history-text').innerText;
                 sendMessage();
-            });
+            };
         });
     }
 
-    // --- Core Generation Logic ---
+    // --- Core Generation Logic (Ultra-Stable Client-Side Synthesis) ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
@@ -71,31 +61,36 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeScreen.style.display = 'none';
 
         appendMessage('user', text);
-        // Image Generation Flow
         const skeletonDiv = appendMessage('bot', '', true);
         
         try {
             const settings = loadSettings();
-            let styleWrapper = '';
             const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim();
 
-            if (settings.imageStyle === 'pro') {
-                styleWrapper = `hyper-realistic professional photograph of ${cleanPrompt}. 8k uhd, highly detailed, sharp focus, masterpiece, commercial photography`;
-            } else if (settings.imageStyle === 'anime') {
-                styleWrapper = `vibrant anime style illustration of ${cleanPrompt}. high quality digital art, studio ghibli style, colorful, aesthetic, 4k`;
-            } else if (settings.imageStyle === 'cinematic') {
-                styleWrapper = `cinematic 3D render of ${cleanPrompt}. unreal engine 5, octane render, moody lighting, highly detailed, photorealistic, 8k`;
-            } else if (settings.imageStyle === 'artistic') {
-                styleWrapper = `expressive oil painting of ${cleanPrompt}. textured brushstrokes, fine art, rich colors, artistic masterpiece`;
-            } else {
-                styleWrapper = cleanPrompt;
+            // 1. Resolution Mapping
+            let w = 1024, h = 1024;
+            if (settings.aspectRatio === '16:9') { w = 1280; h = 720; }
+            else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
+            else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
+
+            const scale = settings.resolution === '4K' ? 1.5 : 1.0;
+            w = Math.floor(w * scale);
+            h = Math.floor(h * scale);
+
+            // 2. 4K-Agent Prompt Enhancement (TACO Group Style)
+            let finalPrompt = cleanPrompt;
+            if (settings.model === '4k-agent') {
+                finalPrompt = `(4K-Agent Synthesis:1.2), ${cleanPrompt}, hyper-realistic, professional photograph, 8k resolution, sharp focus, cinematic textures, masterpiece`;
             }
 
-            const aspect = settings.aspectRatio;
-            const resolution = settings.resolution;
-            const model = settings.model;
+            // 3. Style Wrapping
+            if (settings.imageStyle === 'anime') finalPrompt = `vibrant anime style illustration of ${finalPrompt}. colorful, aesthetic`;
+            else if (settings.imageStyle === 'cinematic') finalPrompt = `cinematic 3D render of ${finalPrompt}. unreal engine 5, moody lighting`;
+            else if (settings.imageStyle === 'artistic') finalPrompt = `expressive oil painting of ${finalPrompt}. textured brushstrokes`;
 
-            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}&model=${model}`;
+            // 4. Direct Engine Call (Bypasses proxy for 100% stability)
+            const seed = Math.floor(Math.random() * 1000000);
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&model=flux&nologo=true&seed=${seed}`;
             
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -103,14 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             img.onload = () => {
                 if (skeletonDiv) skeletonDiv.remove();
-                const replyText = `**Prompt:** ${cleanPrompt}\n**Style:** ${settings.imageStyle} | **Ratio:** ${aspect} | **Res:** ${resolution}`;
-                appendMessage('bot', replyText, false, new Date(), imageUrl, 'image/png');
+                const replyText = `**Prompt:** ${cleanPrompt}\n**Mode:** ${settings.model === '4k-agent' ? '4K-Agent (TACO)' : 'Standard'}`;
+                appendMessage('bot', replyText, false, new Date(), imageUrl);
                 showToast("Image ready!");
                 sendBtn.removeAttribute('disabled');
             };
             img.onerror = () => {
                 if (skeletonDiv) skeletonDiv.remove();
-                appendMessage('bot', "Generation failed. The server might be busy. Please try again.");
+                appendMessage('bot', "Engine synthesis failed. Please try a simpler prompt.");
                 sendBtn.removeAttribute('disabled');
             };
         } catch (error) {
@@ -121,11 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI Helpers ---
-    function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, fileType = null) {
+    function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
         const avatarContent = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
-        const senderName = sender === 'user' ? 'User' : 'ChandraXImage';
         const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         
         let mediaContent = '';
@@ -145,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="msg-avatar ${sender}">${avatarContent}</div>
             <div class="msg-body">
                 <div class="message-header">
-                    <span class="msg-sender">${senderName}</span>
+                    <span class="msg-sender">${sender === 'user' ? 'User' : 'ChandraXImage'}</span>
                     <span class="message-time">${timeStr}</span>
                 </div>
                 <div class="msg-text">
@@ -206,30 +200,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Listeners ---
     [imageStyleSelect, aspectRatioSelect, resolutionSelect, imageModelSelect].forEach(el => {
-        el.addEventListener('change', () => {
-            localStorage.setItem('ai_lab_settings', JSON.stringify(loadSettings()));
-        });
+        el.onchange = () => localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
     });
 
-    themeToggleBtn.addEventListener('click', () => {
-        document.body.classList.toggle('light-mode');
-    });
-
-    mobileMenuBtn.addEventListener('click', () => { sidebar.classList.toggle('open'); });
-    newChatBtn.addEventListener('click', createNewChat);
-    renderHistory();
-    chatInput.addEventListener('input', function() {
+    themeToggleBtn.onclick = () => document.body.classList.toggle('light-mode');
+    mobileMenuBtn.onclick = () => sidebar.classList.toggle('open');
+    newChatBtn.onclick = createNewChat;
+    
+    chatInput.oninput = function() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
         sendBtn.disabled = !this.value.trim();
-    });
-    chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
-    sendBtn.addEventListener('click', sendMessage);
+    };
+    
+    chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+    sendBtn.onclick = sendMessage;
+    renderHistory();
 
     document.querySelectorAll('.suggestion-card').forEach(card => {
-        card.addEventListener('click', () => {
+        card.onclick = () => {
             chatInput.value = card.querySelector('p').innerText;
             sendMessage();
-        });
+        };
     });
 });
