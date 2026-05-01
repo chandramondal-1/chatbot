@@ -35,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('file-input');
     const attachmentPreview = document.getElementById('attachment-preview');
 
-    let currentChatId = null;
     let attachments = [];
 
     // --- Initialization ---
@@ -77,7 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function scrollBottom() {
-        chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+        setTimeout(() => {
+            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+        }, 100);
     }
 
     // --- Attachment Logic ---
@@ -149,8 +150,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- History Logic ---
     function saveToHistory(prompt) {
+        if (!prompt || prompt.trim() === '') return;
         let history = JSON.parse(localStorage.getItem('chandra_history')) || [];
-        const entry = prompt.trim() || (attachments.length > 0 ? "Files Attached" : "New Chat");
+        const entry = prompt.trim();
         if (!history.includes(entry)) {
             history.unshift(entry);
             if (history.length > 20) history.pop();
@@ -191,10 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadHistoryItem(prompt) {
-        // Clear current session to focus on selected history
         messagesWrapper.innerHTML = '';
         welcomeScreen.style.display = 'none';
-        
         chatInput.value = prompt;
         if (window.innerWidth <= 768) { 
             sidebar.classList.remove('open'); 
@@ -218,8 +218,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text && currentAttachments.length === 0) return;
 
         saveToHistory(text);
-        chatInput.value = ''; chatInput.style.height = 'auto'; sendBtn.disabled = true;
-        welcomeScreen.style.display = 'none'; attachments = []; renderAttachmentPreviews();
+        chatInput.value = ''; 
+        chatInput.style.height = 'auto'; 
+        sendBtn.disabled = true;
+        welcomeScreen.style.display = 'none'; 
+        attachments = []; 
+        renderAttachmentPreviews();
 
         appendMessage('user', text, false, new Date(), null, currentAttachments);
         const skeletonDiv = appendMessage('bot', '', true);
@@ -232,8 +236,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settings.aspectRatio === '16:9') { w = 1280; h = 720; }
         else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
         else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
-        w = Math.floor(w * parseFloat(settings.quality));
-        h = Math.floor(h * parseFloat(settings.quality));
+        w = Math.floor(w * parseFloat(settings.quality || 1));
+        h = Math.floor(h * parseFloat(settings.quality || 1));
 
         let finalPrompt = `${cleanPrompt}, masterpiece, ultra-hd, 8k, photorealistic, sharp focus`;
         if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime illustration`;
@@ -253,51 +257,109 @@ document.addEventListener('DOMContentLoaded', () => {
     async function performCloudSynthesis(prompt, w, h, settings, skeleton) {
         const seed = Math.floor(Math.random() * 1000000);
         const cloudUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
+        
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = () => {
-            if (skeleton) skeleton.remove();
+            if (skeleton && skeleton.parentNode) skeleton.remove();
             appendMessage('bot', `**Synthesis Quality:** ${settings.quality}x | Steps: ${settings.steps}`, false, new Date(), cloudUrl);
             scrollBottom();
             sendBtn.removeAttribute('disabled');
         };
-        img.onerror = () => { throw new Error("Cloud busy"); };
+        img.onerror = () => { 
+            if (skeleton && skeleton.parentNode) skeleton.remove();
+            appendMessage('bot', "Synthesis engine timeout. Please try again.");
+            sendBtn.removeAttribute('disabled');
+        };
         img.src = cloudUrl;
     }
 
     async function performA1111Synthesis(prompt, w, h, settings, skeleton) {
         const url = settings.apiUrl || "http://127.0.0.1:7860";
-        const res = await fetch(`${url}/sdapi/v1/txt2img`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, steps: parseInt(settings.steps), cfg_scale: parseFloat(settings.cfg), width: w, height: h })
-        });
-        const data = await res.json();
-        if (skeleton) skeleton.remove();
-        appendMessage('bot', `**Local Synthesis Ready**`, false, new Date(), `data:image/png;base64,${data.images[0]}`);
-        scrollBottom();
-        sendBtn.removeAttribute('disabled');
+        try {
+            const res = await fetch(`${url}/sdapi/v1/txt2img`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, steps: parseInt(settings.steps), cfg_scale: parseFloat(settings.cfg), width: w, height: h })
+            });
+            const data = await res.json();
+            if (skeleton && skeleton.parentNode) skeleton.remove();
+            appendMessage('bot', `**Local Synthesis Ready**`, false, new Date(), `data:image/png;base64,${data.images[0]}`);
+            scrollBottom();
+            sendBtn.removeAttribute('disabled');
+        } catch(e) {
+            if (skeleton && skeleton.parentNode) skeleton.remove();
+            appendMessage('bot', "Local A1111 connection failed.");
+            sendBtn.removeAttribute('disabled');
+        }
     }
 
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
-        const div = document.createElement('div'); div.className = `message ${sender}`;
+        const div = document.createElement('div'); 
+        div.className = `message ${sender}`;
         const avatar = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
-        let media = ''; if (fileUrl) media = `<div class="message-media" style="margin-top:15px;"><img src="${fileUrl}" style="max-width:100%; border-radius:12px; box-shadow:var(--shadow-lg);"><button onclick="downloadFromDOM(this)" class="send-btn" style="width:auto; padding:0 20px; margin-top:10px; font-size:0.8rem;"><i class="fa-solid fa-download"></i> Download</button></div>`;
-        let atts = ''; if (currentAttachments.length > 0) { atts = '<div class="message-attachments" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">'; currentAttachments.forEach(a => { if (a.type.startsWith('image/')) atts += `<img src="${a.data}" style="max-width:200px; border-radius:8px;">`; else if (a.type.startsWith('audio/')) atts += `<audio controls src="${a.data}"></audio>`; else if (a.type.startsWith('video/')) atts += `<video controls src="${a.data}"></video>`; else atts += `<div class="file-card"><i class="fa-solid fa-file file-icon"></i><div class="file-info"><span class="file-name">${a.name}</span><span class="file-size">${a.size}</span></div></div>`; }); atts += '</div>'; }
-        div.innerHTML = `<div class="msg-avatar ${sender}">${avatar}</div><div class="msg-body"><div class="message-header"><span class="msg-sender">${sender==='user'?'User':'ChandraXImage'}</span><span class="message-time">${date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="msg-text">${isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : marked.parse(text)}</div>${atts}${media}</div>`;
-        messagesWrapper.appendChild(div); scrollBottom(); return div;
+        
+        let media = ''; 
+        if (fileUrl) {
+            media = `
+                <div class="message-media" style="margin-top:15px;">
+                    <img src="${fileUrl}" style="max-width:100%; border-radius:12px; box-shadow:var(--shadow-lg);">
+                    <button onclick="downloadFromDOM(this)" class="send-btn" style="width:auto; padding:0 20px; margin-top:10px; font-size:0.8rem;">
+                        <i class="fa-solid fa-download"></i> Download
+                    </button>
+                </div>`;
+        }
+
+        let atts = ''; 
+        if (currentAttachments && currentAttachments.length > 0) { 
+            atts = '<div class="message-attachments" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">'; 
+            currentAttachments.forEach(a => { 
+                if (a.type.startsWith('image/')) atts += `<img src="${a.data}" style="max-width:200px; border-radius:8px;">`; 
+                else if (a.type.startsWith('audio/')) atts += `<audio controls src="${a.data}"></audio>`; 
+                else if (a.type.startsWith('video/')) atts += `<video controls src="${a.data}"></video>`; 
+                else atts += `<div class="file-card"><i class="fa-solid fa-file file-icon"></i><div class="file-info"><span class="file-name">${a.name}</span><span class="file-size">${a.size}</span></div></div>`; 
+            }); 
+            atts += '</div>'; 
+        }
+
+        const safeText = text || "";
+        const htmlContent = isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(safeText) : safeText);
+
+        div.innerHTML = `
+            <div class="msg-avatar ${sender}">${avatar}</div>
+            <div class="msg-body">
+                <div class="message-header">
+                    <span class="msg-sender">${sender==='user'?'User':'ChandraXImage'}</span>
+                    <span class="message-time">${date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+                </div>
+                <div class="msg-text">${htmlContent}</div>
+                ${atts}${media}
+            </div>
+        `;
+        messagesWrapper.appendChild(div); 
+        scrollBottom(); 
+        return div;
     }
 
     window.downloadFromDOM = (btn) => {
         const img = btn.previousElementSibling;
-        const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        const canvas = document.createElement('canvas'); 
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
         canvas.getContext('2d').drawImage(img, 0, 0);
-        canvas.toBlob(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ChandraX-${Date.now()}.png`; a.click(); });
+        canvas.toBlob(blob => { 
+            const a = document.createElement('a'); 
+            a.href = URL.createObjectURL(blob); 
+            a.download = `ChandraX-${Date.now()}.png`; 
+            a.click(); 
+        });
     };
 
     function showToast(msg, type = 'success') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
         const t = document.createElement('div'); t.className = `toast ${type}`; t.innerText = msg;
-        document.getElementById('toast-container').appendChild(t); setTimeout(() => t.remove(), 3000);
+        container.appendChild(t); 
+        setTimeout(() => t.remove(), 3000);
     }
 
     function loadSettings() {
@@ -324,15 +386,24 @@ document.addEventListener('DOMContentLoaded', () => {
         themeToggleBtn.querySelector('i').className = isLight ? 'fa-regular fa-moon' : 'fa-regular fa-sun';
     };
 
-    mobileMenuBtn.onclick = () => { sidebar.classList.toggle('open'); sidebarOverlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; };
-    sidebarOverlay.onclick = () => { sidebar.classList.remove('open'); sidebarOverlay.style.display = 'none'; };
-    newChatBtn.onclick = () => { messagesWrapper.innerHTML = ''; welcomeScreen.style.display = 'flex'; currentChatId = null; };
+    mobileMenuBtn.onclick = () => { sidebar.classList.toggle('open'); if (sidebarOverlay) sidebarOverlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; };
+    if (sidebarOverlay) sidebarOverlay.onclick = () => { sidebar.classList.remove('open'); sidebarOverlay.style.display = 'none'; };
+    newChatBtn.onclick = () => { messagesWrapper.innerHTML = ''; welcomeScreen.style.display = 'flex'; };
     
-    chatInput.oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; sendBtn.disabled = !this.value.trim() && attachments.length === 0; };
+    chatInput.oninput = function() { 
+        this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; 
+        sendBtn.disabled = !this.value.trim() && attachments.length === 0; 
+    };
+    
     chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
     sendBtn.onclick = sendMessage;
 
-    document.querySelectorAll('.suggestion-card').forEach(c => c.onclick = () => { chatInput.value = c.querySelector('p strong').innerText; sendMessage(); });
+    document.querySelectorAll('.suggestion-card').forEach(c => {
+        c.onclick = () => { 
+            const p = c.querySelector('p strong');
+            if (p) { chatInput.value = p.innerText; sendMessage(); }
+        };
+    });
 
     init();
 });
