@@ -356,6 +356,18 @@ document.addEventListener('DOMContentLoaded', () => {
             systemPrompt = 'You are Chandra AI, an expert software engineer created by CHANDRA MONDAL. You provide clean, optimized code and can assist with UI/UX design via the 4K Agent.';
         }
 
+        const imageKeywords = ['image', 'generate', 'create', 'draw', 'picture', 'photo', 'painting', 'sketch', 'imagine'];
+        const isImageRequest = imageKeywords.some(keyword => userText.toLowerCase().includes(keyword));
+
+        // If it looks like an image request and we aren't already in image mode, 
+        // give the user what they want using the 4K Agent logic
+        if (isImageRequest && currentAppMode !== 'image') {
+            skeletonDiv.remove();
+            console.log("Auto-detected image request. Switching to 4K Agent logic...");
+            handleImageGeneration(userText);
+            return;
+        }
+
         const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
         const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
 
