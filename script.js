@@ -484,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const resMatch = prompt.match(/\b(2K|4K)\b/i);
             const resolution = resMatch ? resMatch[1].toUpperCase() : '';
 
-            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}`;
+            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}&model=${settings.imageModel || 'gemini-3-pro'}`;
             
             const img = new Image();
             img.src = imageUrl;
@@ -492,6 +492,7 @@ document.addEventListener('DOMContentLoaded', () => {
             img.onload = async () => {
                 skeletonDiv.remove();
                 const replyText = `Here is the image I generated for: **${cleanPrompt}**`;
+                appendMessage('bot', replyText, false, imageUrl, 'image/png');
                 await saveMessageToDB('bot', replyText, imageUrl, 'image/png');
                 showToast("Image generated successfully!");
                 sendBtn.removeAttribute('disabled');

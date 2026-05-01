@@ -80,9 +80,13 @@ app.get('/api/proxy/image', async (req, res) => {
         }
 
         // Use 4KAgent (Nano Banana) models via OpenRouter
-        const apiModel = (resolution === '2K' || resolution === '4K') 
+        let apiModel = (resolution === '2K' || resolution === '4K') 
             ? 'google/gemini-3-pro-image-preview' 
             : 'google/gemini-3.1-flash-image-preview';
+        
+        if (req.query.model === 'flux-pro') {
+            apiModel = 'black-forest-labs/flux-pro-1.1';
+        }
 
         console.log(`Generating image with ${apiModel} (4K Agent via OpenRouter)...`);
 
