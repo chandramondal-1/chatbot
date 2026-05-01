@@ -10,40 +10,39 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '/')));
 
-// Specialized Image Engine (Optimized for reliability and 4K quality)
+// Specialized Image Engine (Optimized for 4K-Agent Synthesis)
 app.get('/api/proxy/image', async (req, res) => {
     try {
         const { prompt, aspect_ratio, resolution, model } = req.query;
 
-        console.log(`[Engine] Generating: "${prompt}" [${aspect_ratio}]`);
+        console.log(`[Engine] Synthesis: "${prompt}" [${aspect_ratio}]`);
 
-        // Optimized resolution mapping
+        // Dynamic Resolution Mapping
         let width = 1024, height = 1024;
         if (aspect_ratio === '16:9') { width = 1280; height = 720; }
         else if (aspect_ratio === '9:16') { width = 720; height = 1280; }
-        else if (aspect_ratio === '4:3') { width = 1024; height = 768; }
-        else if (aspect_ratio === '21:9') { width = 1280; height = 544; }
+        else if (aspect_ratio === '21:9') { width = 1440; height = 612; }
 
-        // 4K Boost
-        if (resolution === '4K') { 
-            width = Math.min(width * 1.5, 1920); 
-            height = Math.min(height * 1.5, 1920); 
-        }
+        // Quality Scaling
+        const scale = resolution === '4K' ? 1.5 : 1.0;
+        width = Math.floor(width * scale);
+        height = Math.floor(height * scale);
 
-        // Conditional Prompt Enhancement (4K-Agent TACO Group mode)
+        // Cap to ensure engine stability
+        width = Math.min(width, 1920);
+        height = Math.min(height, 1920);
+
+        // 4K-Agent Prompt Engineering
         let finalPrompt = prompt;
         if (model === '4k-agent') {
-            finalPrompt = `${prompt}. ultra-high resolution synthesis, 4K-Agent professional grade, meticulously detailed textures, masterpiece quality, sharp focus.`;
-            console.log("[Engine] Mode: 4K-Agent (LLM-Enhanced)");
-        } else {
-            console.log("[Engine] Mode: Standard Fast Diffusion");
+            finalPrompt = `(4K-Agent Synthesis:1.2), ${prompt}, highly detailed, professional masterpiece, 8k resolution, sharp focus, cinematic textures`;
         }
 
-        // The most reliable Pollinations URL structure
-        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}&enhance=${model === '4k-agent' ? 'true' : 'false'}`;
+        // Build robust Pollinations URL
+        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
         
-        const response = await fetch(pollinationsUrl);
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
+        const response = await fetch(pollinationsUrl, { signal: AbortSignal.timeout(25000) });
+        if (!response.ok) throw new Error(`Engine busy (${response.status})`);
 
         const buffer = await response.arrayBuffer();
         res.setHeader('Content-Type', 'image/png');
@@ -51,7 +50,7 @@ app.get('/api/proxy/image', async (req, res) => {
         res.send(Buffer.from(buffer));
 
     } catch (error) {
-        console.error("[Engine] Critical Error:", error.message);
+        console.error("[Engine] Error:", error.message);
         res.status(500).send("Generation failed.");
     }
 });
@@ -61,5 +60,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`ChandraXImage PRO Engine Active on ${PORT}`);
+    console.log(`4K-Agent Active on ${PORT}`);
 });
