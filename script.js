@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Elements ---
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
     const chatContainer = document.getElementById('chat-container');
@@ -8,22 +9,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const historyList = document.getElementById('history-list');
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const sidebar = document.querySelector('.sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
     
-    // Settings elements
-    const imageStyleSelect = document.getElementById('image-style-select');
-    const aspectRatioSelect = document.getElementById('aspect-ratio-select');
-    const connectionMode = document.getElementById('connection-mode');
-    const localSettings = document.getElementById('local-settings');
-    const apiUrlInput = document.getElementById('api-url');
-    const imageModelSelect = document.getElementById('image-model-select');
-    const qualitySelect = document.getElementById('quality-select');
-    const stepsSlider = document.getElementById('steps-slider');
-    const cfgSlider = document.getElementById('cfg-slider');
-    const stepsVal = document.getElementById('steps-val');
-    const cfgVal = document.getElementById('cfg-val');
+    const settingsEls = {
+        imageStyle: document.getElementById('image-style-select'),
+        aspectRatio: document.getElementById('aspect-ratio-select'),
+        connectionMode: document.getElementById('connection-mode'),
+        apiUrl: document.getElementById('api-url'),
+        imageModel: document.getElementById('image-model-select'),
+        quality: document.getElementById('quality-select'),
+        steps: document.getElementById('steps-slider'),
+        cfg: document.getElementById('cfg-slider'),
+        stepsVal: document.getElementById('steps-val'),
+        cfgVal: document.getElementById('cfg-val')
+    };
+    
     const themeToggleBtn = document.getElementById('theme-toggle');
-
-    // Attachment elements
     const attachBtn = document.getElementById('attach-btn');
     const fileInput = document.getElementById('file-input');
     const attachmentPreview = document.getElementById('attachment-preview');
@@ -31,18 +32,47 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentChatId = null;
     let attachments = [];
 
-    // --- Connection Mode Toggle ---
-    connectionMode.onchange = () => {
-        localSettings.style.display = connectionMode.value === 'cloud' ? 'none' : 'block';
-        if (connectionMode.value === 'a1111') apiUrlInput.placeholder = "http://127.0.0.1:7860";
-        localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
-    };
+    // --- Initialization ---
+    function init() {
+        // Load Theme
+        if (localStorage.getItem('chandra_theme') === 'light') {
+            document.body.classList.add('light-mode');
+            themeToggleBtn.querySelector('i').className = 'fa-regular fa-moon';
+        }
+
+        // Load Settings
+        const savedSettings = JSON.parse(localStorage.getItem('chandra_settings')) || {};
+        Object.keys(settingsEls).forEach(key => {
+            if (savedSettings[key] && settingsEls[key]) {
+                settingsEls[key].value = savedSettings[key];
+            }
+        });
+        updateSliderLabels();
+        toggleLocalSettings();
+        renderHistory();
+    }
+
+    // --- UI Logic ---
+    function updateSliderLabels() {
+        if (settingsEls.stepsVal) settingsEls.stepsVal.innerText = settingsEls.steps.value;
+        if (settingsEls.cfgVal) settingsEls.cfgVal.innerText = settingsEls.cfg.value;
+    }
+
+    function toggleLocalSettings() {
+        const localArea = document.getElementById('local-settings');
+        if (localArea) localArea.style.display = settingsEls.connectionMode.value === 'cloud' ? 'none' : 'block';
+    }
+
+    function scrollBottom() {
+        chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+    }
 
     // --- Attachment Logic ---
     attachBtn.onclick = () => fileInput.click();
     fileInput.onchange = (e) => {
         const files = Array.from(e.target.files);
         files.forEach(file => {
+            if (attachments.length >= 5) return showToast("Max 5 files allowed", "error");
             const reader = new FileReader();
             reader.onload = (re) => {
                 attachments.push({
@@ -55,16 +85,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderAttachmentPreviews();
                 sendBtn.disabled = false;
             };
-            if (file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/')) {
-                reader.readAsDataURL(file);
-            } else {
-                reader.onload = () => {
-                    attachments.push({ name: file.name, size: (file.size / 1024).toFixed(1) + " KB", type: file.type, data: null, id: Date.now() + Math.random() });
-                    renderAttachmentPreviews();
-                    sendBtn.disabled = false;
-                };
-                reader.readAsText(file.slice(0, 100));
-            }
+            if (file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/')) reader.readAsDataURL(file);
+            else reader.readAsText(file.slice(0, 100));
         });
         fileInput.value = '';
     };
@@ -73,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         attachmentPreview.innerHTML = attachments.map(att => `
             <div class="preview-pill">
                 ${att.type.startsWith('image/') ? `<img src="${att.data}">` : `<i class="fa-solid fa-file"></i>`}
-                <span>${att.name}</span>
+                <span title="${att.name}">${att.name.length > 10 ? att.name.substring(0, 10) + '...' : att.name}</span>
                 <i class="fa-solid fa-xmark remove-attachment" onclick="removeAttachment(${att.id})"></i>
             </div>
         `).join('');
@@ -88,9 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- History Logic ---
     function saveToHistory(prompt) {
         let history = JSON.parse(localStorage.getItem('chandra_history')) || [];
-        const cleanItem = prompt.trim() || (attachments.length > 0 ? "Attached files" : "New Chat");
-        if (!history.includes(cleanItem)) {
-            history.unshift(cleanItem);
+        const entry = prompt.trim() || (attachments.length > 0 ? "Files Attached" : "New Chat");
+        if (!history.includes(entry)) {
+            history.unshift(entry);
             if (history.length > 20) history.pop();
             localStorage.setItem('chandra_history', JSON.stringify(history));
             renderHistory();
@@ -101,10 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!historyList) return;
         const history = JSON.parse(localStorage.getItem('chandra_history')) || [];
         historyList.innerHTML = history.map((item, index) => `
-            <li class="history-item" title="${item}">
+            <li class="history-item">
                 <div class="history-content" onclick="loadHistoryItem('${item.replace(/'/g, "\\'")}')">
                     <i class="fa-solid fa-image"></i>
-                    <span class="history-text">${item.length > 20 ? item.substring(0, 20) + '...' : item}</span>
+                    <span class="history-text">${item}</span>
                 </div>
                 <button class="history-delete" onclick="deleteHistoryItem(${index})">
                     <i class="fa-solid fa-trash-can"></i>
@@ -115,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.loadHistoryItem = (prompt) => {
         chatInput.value = prompt;
+        if (window.innerWidth <= 768) { sidebar.classList.remove('open'); sidebarOverlay.style.display = 'none'; }
         sendMessage();
     };
 
@@ -123,18 +146,15 @@ document.addEventListener('DOMContentLoaded', () => {
         history.splice(index, 1);
         localStorage.setItem('chandra_history', JSON.stringify(history));
         renderHistory();
-        showToast("Item deleted", "info");
     };
 
-    // --- Core Synthesis Engine (Cloud & Local Hub) ---
+    // --- Core Synthesis ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         const currentAttachments = [...attachments];
         if (!text && currentAttachments.length === 0) return;
 
         saveToHistory(text);
-        if (!currentChatId) currentChatId = Date.now().toString();
-
         chatInput.value = '';
         chatInput.style.height = 'auto';
         sendBtn.disabled = true;
@@ -144,188 +164,152 @@ document.addEventListener('DOMContentLoaded', () => {
 
         appendMessage('user', text, false, new Date(), null, currentAttachments);
         const skeletonDiv = appendMessage('bot', '', true);
+        scrollBottom();
         
         const settings = loadSettings();
-        const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim() || "Pro-grade synthesis";
+        const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim() || "Synthesis";
 
-        // 1. Resolution & Quality Scaling
         let w = 1024, h = 1024;
         if (settings.aspectRatio === '16:9') { w = 1280; h = 720; }
         else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
         else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
-
         w = Math.floor(w * parseFloat(settings.quality));
         h = Math.floor(h * parseFloat(settings.quality));
 
-        // 2. High-Fidelity Prompt Engineering
-        let finalPrompt = `${cleanPrompt}, masterpiece, ultra-high definition, 8k resolution, photorealistic, sharp focus, cinematic lighting, highly detailed textures, trending on artstation`;
-        if (settings.imageStyle === 'anime') finalPrompt += `, vibrant digital anime illustration, sharp lines, colorful`;
-        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render, octane render, unreal engine 5, ray tracing`;
-        else if (settings.imageStyle === 'artistic') finalPrompt += `, expressive oil painting style, thick brushstrokes, fine art museum quality`;
+        let finalPrompt = `${cleanPrompt}, masterpiece, ultra-hd, 8k, photorealistic, sharp focus, cinematic lighting`;
+        if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime illustration`;
+        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3d render, unreal engine 5`;
+        else if (settings.imageStyle === 'artistic') finalPrompt += `, artistic oil painting style`;
 
-        // 3. Synthesis Logic
         try {
-            if (settings.mode === 'cloud') {
-                await performCloudSynthesis(finalPrompt, w, h, settings, skeletonDiv);
-            } else if (settings.mode === 'a1111') {
-                await performA1111Synthesis(finalPrompt, w, h, settings, skeletonDiv);
-            }
+            if (settings.mode === 'cloud') await performCloudSynthesis(finalPrompt, w, h, settings, skeletonDiv);
+            else if (settings.mode === 'a1111') await performA1111Synthesis(finalPrompt, w, h, settings, skeletonDiv);
         } catch (error) {
-            if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-            appendMessage('bot', `Synthesis Error: ${error.message}.`);
+            if (skeletonDiv) skeletonDiv.remove();
+            appendMessage('bot', `Engine Error: ${error.message}`);
             sendBtn.removeAttribute('disabled');
         }
     }
 
-    // --- Cloud Synthesis (Flux Optimized) ---
     async function performCloudSynthesis(prompt, w, h, settings, skeleton) {
         const seed = Math.floor(Math.random() * 1000000);
-        const cloudPrompt = `(Ultra-High-Resolution Synthesis:1.2), ${prompt}, (sampling steps: ${settings.steps}), (CFG scale: ${settings.cfg})`;
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cloudPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
-        
+        const cloudUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.onload = () => finalizeSynthesis(imageUrl, `Cloud Stable Diffusion Pro`, settings, skeleton);
-        img.onerror = () => { throw new Error("Synthesis engine timed out"); };
-        img.src = imageUrl;
+        img.onload = () => {
+            if (skeleton) skeleton.remove();
+            appendMessage('bot', `**Quality:** ${settings.quality}x | Steps: ${settings.steps}`, false, new Date(), cloudUrl);
+            scrollBottom();
+            sendBtn.removeAttribute('disabled');
+        };
+        img.onerror = () => { throw new Error("Cloud timeout"); };
+        img.src = cloudUrl;
     }
 
     async function performA1111Synthesis(prompt, w, h, settings, skeleton) {
         const url = settings.apiUrl || "http://127.0.0.1:7860";
-        const response = await fetch(`${url}/sdapi/v1/txt2img`, {
+        const res = await fetch(`${url}/sdapi/v1/txt2img`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: prompt,
-                steps: parseInt(settings.steps),
-                cfg_scale: parseFloat(settings.cfg),
-                width: w,
-                height: h
-            })
+            body: JSON.stringify({ prompt, steps: parseInt(settings.steps), cfg_scale: parseFloat(settings.cfg), width: w, height: h })
         });
-        const data = await response.json();
-        finalizeSynthesis(`data:image/png;base64,${data.images[0]}`, "Local A1111", settings, skeleton);
-    }
-
-    function finalizeSynthesis(url, engineName, settings, skeleton) {
-        if (skeleton && skeleton.parentNode) skeleton.remove();
-        const qualityText = settings.quality === "1" ? "Standard" : (settings.quality === "1.5" ? "Ultra 2K" : "Pro 4K");
-        appendMessage('bot', `**Engine:** ${engineName}\n**Quality:** ${qualityText} | Steps: ${settings.steps} | CFG: ${settings.cfg}`, false, new Date(), url);
-        showToast("Synthesis successful!");
+        const data = await res.json();
+        if (skeleton) skeleton.remove();
+        appendMessage('bot', `**Local A1111 Synthesis Ready**`, false, new Date(), `data:image/png;base64,${data.images[0]}`);
+        scrollBottom();
         sendBtn.removeAttribute('disabled');
     }
 
-    // --- UI Helpers ---
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}`;
-        const avatarContent = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
-        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+        const avatar = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
         
-        let mediaContent = '';
+        let media = '';
         if (fileUrl) {
-            mediaContent = `
-                <div class="message-media" style="margin-top: 10px;">
-                    <img src="${fileUrl}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: block;" crossOrigin="anonymous">
-                    <div style="display:flex; gap:10px; margin-top:12px;">
-                        <button onclick="downloadFromDOM(this)" class="msg-action-btn" style="background: var(--chandra-gradient); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <i class="fa-solid fa-download"></i> Download Image
-                        </button>
-                    </div>
-                </div>`;
+            media = `<div class="message-media" style="margin-top:15px;"><img src="${fileUrl}" style="max-width:100%; border-radius:12px; box-shadow:var(--shadow-lg);" onload="window.scrollTo(0,document.body.scrollHeight)"><button onclick="downloadFromDOM(this)" class="send-btn" style="width:auto; padding:0 20px; margin-top:10px; font-size:0.8rem;"><i class="fa-solid fa-download"></i> Download</button></div>`;
         }
 
-        let attachmentHtml = '';
+        let atts = '';
         if (currentAttachments.length > 0) {
-            attachmentHtml = '<div class="message-attachments" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">';
-            currentAttachments.forEach(att => {
-                if (att.type.startsWith('image/')) attachmentHtml += `<img src="${att.data}" style="max-width: 250px; border-radius: 8px;">`;
-                else if (att.type.startsWith('audio/')) attachmentHtml += `<audio controls src="${att.data}"></audio>`;
-                else if (att.type.startsWith('video/')) attachmentHtml += `<video controls src="${att.data}"></video>`;
-                else attachmentHtml += `<div class="file-card"><i class="fa-solid fa-file file-icon"></i><div class="file-info"><span class="file-name">${att.name}</span><span class="file-size">${att.size}</span></div></div>`;
+            atts = '<div class="message-attachments" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">';
+            currentAttachments.forEach(a => {
+                if (a.type.startsWith('image/')) atts += `<img src="${a.data}" style="max-width:200px; border-radius:8px;">`;
+                else if (a.type.startsWith('audio/')) atts += `<audio controls src="${a.data}"></audio>`;
+                else if (a.type.startsWith('video/')) atts += `<video controls src="${a.data}"></video>`;
+                else atts += `<div class="file-card"><i class="fa-solid fa-file file-icon"></i><div class="file-info"><span class="file-name">${a.name}</span><span class="file-size">${a.size}</span></div></div>`;
             });
-            attachmentHtml += '</div>';
+            atts += '</div>';
         }
 
-        messageDiv.innerHTML = `
-            <div class="msg-avatar ${sender}">${avatarContent}</div>
+        div.innerHTML = `
+            <div class="msg-avatar ${sender}">${avatar}</div>
             <div class="msg-body">
-                <div class="message-header">
-                    <span class="msg-sender">${sender === 'user' ? 'User' : 'ChandraXImage'}</span>
-                    <span class="message-time">${timeStr}</span>
-                </div>
-                <div class="msg-text">
-                    ${isSkeleton ? '<div class="skeleton-line medium"></div><div class="skeleton-line"></div>' : marked.parse(text)}
-                </div>
-                ${attachmentHtml}
-                ${mediaContent}
+                <div class="message-header"><span class="msg-sender">${sender==='user'?'User':'ChandraXImage'}</span><span class="message-time">${date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>
+                <div class="msg-text">${isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : marked.parse(text)}</div>
+                ${atts}${media}
             </div>
         `;
-        messagesWrapper.appendChild(messageDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-        return messageDiv;
+        messagesWrapper.appendChild(div);
+        scrollBottom();
+        return div;
     }
 
     window.downloadFromDOM = (btn) => {
-        try {
-            const mediaDiv = btn.closest('.message-media');
-            const img = mediaDiv.querySelector('img');
-            const canvas = document.createElement('canvas');
-            canvas.width = img.naturalWidth;
-            canvas.height = img.naturalHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            canvas.toBlob((blob) => {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `Synthesis-${Date.now()}.png`;
-                link.click();
-            }, 'image/png');
-        } catch (e) {
-            showToast("Download failed", "error");
-        }
+        const img = btn.previousElementSibling;
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        canvas.getContext('2d').drawImage(img, 0, 0);
+        canvas.toBlob(blob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob); a.download = `ChandraX-${Date.now()}.png`; a.click();
+        });
     };
 
     function showToast(msg, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerText = msg;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        const t = document.createElement('div'); t.className = `toast ${type}`; t.innerText = msg;
+        document.getElementById('toast-container').appendChild(t);
+        setTimeout(() => t.remove(), 3000);
     }
 
     function loadSettings() {
-        return { 
-            imageStyle: imageStyleSelect.value,
-            aspectRatio: aspectRatioSelect.value,
-            mode: connectionMode.value,
-            apiUrl: apiUrlInput.value,
-            model: imageModelSelect.value,
-            quality: qualitySelect.value,
-            steps: stepsSlider.value,
-            cfg: cfgSlider.value
-        };
+        const s = {};
+        Object.keys(settingsEls).forEach(k => { if (settingsEls[k]) s[k] = settingsEls[k].value; });
+        return s;
     }
 
-    stepsSlider.oninput = () => { stepsVal.innerText = stepsSlider.value; };
-    cfgSlider.oninput = () => { cfgVal.innerText = cfgSlider.value; };
-
-    [imageStyleSelect, aspectRatioSelect, connectionMode, apiUrlInput, imageModelSelect, qualitySelect, stepsSlider, cfgSlider].forEach(el => {
-        el.onchange = () => localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
+    // --- Listeners ---
+    Object.values(settingsEls).forEach(el => {
+        if (el) el.onchange = () => {
+            updateSliderLabels();
+            toggleLocalSettings();
+            localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
+        };
     });
 
-    themeToggleBtn.onclick = () => document.body.classList.toggle('light-mode');
-    mobileMenuBtn.onclick = () => sidebar.classList.toggle('open');
-    newChatBtn.onclick = () => { messagesWrapper.innerHTML = ''; welcomeScreen.style.display = 'flex'; };
+    settingsEls.steps.oninput = updateSliderLabels;
+    settingsEls.cfg.oninput = updateSliderLabels;
+
+    themeToggleBtn.onclick = () => {
+        document.body.classList.toggle('light-mode');
+        const isLight = document.body.classList.contains('light-mode');
+        localStorage.setItem('chandra_theme', isLight ? 'light' : 'dark');
+        themeToggleBtn.querySelector('i').className = isLight ? 'fa-regular fa-moon' : 'fa-regular fa-sun';
+    };
+
+    mobileMenuBtn.onclick = () => { sidebar.classList.toggle('open'); sidebarOverlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; };
+    sidebarOverlay.onclick = () => { sidebar.classList.remove('open'); sidebarOverlay.style.display = 'none'; };
+    newChatBtn.onclick = () => { messagesWrapper.innerHTML = ''; welcomeScreen.style.display = 'flex'; currentChatId = null; };
     
     chatInput.oninput = function() {
-        this.style.height = 'auto';
-        this.style.height = this.scrollHeight + 'px';
+        this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';
         sendBtn.disabled = !this.value.trim() && attachments.length === 0;
     };
     
     chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
     sendBtn.onclick = sendMessage;
-    renderHistory();
+
+    document.querySelectorAll('.suggestion-card').forEach(c => c.onclick = () => { chatInput.value = c.querySelector('p strong').innerText; sendMessage(); });
+
+    init();
 });
