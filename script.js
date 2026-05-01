@@ -254,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}&model=${model}`;
             
             const img = new Image();
+            img.crossOrigin = "anonymous";
             img.src = imageUrl;
             img.onload = async () => {
                 if (skeletonDiv) skeletonDiv.remove();
@@ -343,12 +344,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.downloadImage = async (url) => {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `4k-agent-${Date.now()}.png`;
-        link.click();
+        try {
+            showToast("Preparing download...", "info");
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Network response was not ok");
+            const blob = await response.blob();
+            
+            // Verify it's actually an image
+            if (!blob.type.startsWith('image/')) {
+                throw new Error("Downloaded file is not a valid image. The generation might have failed.");
+            }
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `ChandraXImage-${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast("Download started!");
+        } catch (error) {
+            console.error("Download failed:", error);
+            alert("Download failed: " + error.message);
+        }
     };
 
     themeToggleBtn.addEventListener('click', () => {
