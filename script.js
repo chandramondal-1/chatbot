@@ -16,15 +16,12 @@ const firebaseConfig = {
   appId: "1:196542676864:web:9039292a8a542cdaaf8b65"
 };
 
-// (API keys are now handled securely on the server-side in server.js)
-
-
-// Initialize Firebase
 // API Configuration
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('render.com')
     ? '' 
     : 'https://chatbot-1-dxrx.onrender.com'; // Linked to your Render backend!
 
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -43,25 +40,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const messagesWrapper = document.getElementById('messages-wrapper');
     const welcomeScreen = document.getElementById('welcome-screen');
     const chatContainer = document.getElementById('chat-container');
-    const suggestionCards = document.querySelectorAll('.suggestion-card');
-    const newChatBtn = document.querySelector('.new-chat-btn');
     const themeToggleBtn = document.getElementById('theme-toggle');
     const mobileMenuBtn = document.getElementById('mobile-menu-btn');
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
-    const voiceBtn = document.getElementById('voice-btn');
     const inputContainer = document.querySelector('.input-container');
     const toastContainer = document.getElementById('toast-container');
-    const stopSpeakBtn = document.getElementById('stop-speak-btn');
     const imageStyleSelect = document.getElementById('image-style-select');
-    const textModeSelect = document.getElementById('text-mode-select');
-    const voiceSelect = document.getElementById('voice-select');
-    const modeBtns = document.querySelectorAll('.mode-pill');
-    let currentAppMode = 'text'; // Default mode
-    const modelSelect = document.querySelector('.model-selector select');
-    if (modelSelect) {
-        // modelSelect is defined but not currently used for logic
-    }
     
     // Auth Elements
     const authBtn = document.getElementById('auth-btn');
@@ -97,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("Firebase Auth Error:", error.code, error.message);
-                alert("Authentication failed: " + error.message + "\n\nTip: Make sure you added 'chandramondal-1.github.io' to Authorized Domains in Firebase Console.");
+                alert("Authentication failed: " + error.message);
             }
         }
     });
@@ -105,57 +90,39 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Chat Management Logic ---
     function subscribeToChatList() {
         if (!currentUser) return;
-        
         const chatsRef = collection(db, 'users', currentUser.uid, 'chats');
         const q = query(chatsRef, orderBy('updatedAt', 'desc'));
-        
         if (chatListUnsubscribe) chatListUnsubscribe();
-        
         chatListUnsubscribe = onSnapshot(q, (snapshot) => {
             historyList.innerHTML = '';
             if (snapshot.empty) {
-                historyList.innerHTML = '<li class="history-item"><div class="history-content"><span class="history-title">No chats yet</span></div></li>';
+                historyList.innerHTML = '<li class="history-item"><div class="history-content"><span class="history-title">No generations yet</span></div></li>';
                 return;
             }
-            
             snapshot.forEach((doc) => {
                 const chatData = doc.data();
                 const chatId = doc.id;
                 const li = document.createElement('li');
                 li.className = `history-item ${currentChatId === chatId ? 'active' : ''}`;
                 li.dataset.id = chatId;
-                
                 li.innerHTML = `
-                    <i class="fa-regular fa-message" style="margin-right: 0.75rem; font-size: 0.8rem;"></i>
-                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${chatData.title || 'New Chat'}</span>
+                    <i class="fa-regular fa-image" style="margin-right: 0.75rem; font-size: 0.8rem;"></i>
+                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${chatData.title || 'New Image'}</span>
                     <div class="history-actions">
-                        <button class="rename-chat" title="Rename"><i class="fa-regular fa-pen-to-square"></i></button>
                         <button class="delete-chat" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
                     </div>
                 `;
-                
                 li.addEventListener('click', (e) => {
                     if (e.target.closest('.history-actions')) return;
                     selectChat(chatId);
                 });
-                
                 const deleteBtn = li.querySelector('.delete-chat');
-                const renameBtn = li.querySelector('.rename-chat');
-
                 if (deleteBtn) {
                     deleteBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         deleteChat(chatId);
                     });
                 }
-
-                if (renameBtn) {
-                    renameBtn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        renameChat(chatId, chatData.title);
-                    });
-                }
-                
                 historyList.appendChild(li);
             });
         });
@@ -164,20 +131,15 @@ document.addEventListener('DOMContentLoaded', () => {
     async function selectChat(chatId) {
         if (currentChatId === chatId) return;
         currentChatId = chatId;
-        
         document.querySelectorAll('.history-item').forEach(item => {
             item.classList.toggle('active', item.dataset.id === chatId);
         });
-        
         welcomeScreen.style.display = 'none';
         messagesWrapper.style.display = 'flex';
         messagesWrapper.innerHTML = '';
-        
         if (messageUnsubscribe) messageUnsubscribe();
-        
         const messagesRef = collection(db, 'users', currentUser.uid, 'chats', chatId, 'messages');
         const q = query(messagesRef, orderBy('timestamp', 'asc'));
-        
         messageUnsubscribe = onSnapshot(q, (snapshot) => {
             messagesWrapper.innerHTML = '';
             snapshot.forEach((doc) => {
@@ -186,32 +148,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             scrollToBottom();
         });
-        
         sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('active');
+        sidebarOverlay.style.display = 'none';
     }
 
     async function deleteChat(chatId) {
-        if (!confirm("Are you sure you want to delete this chat?")) return;
+        if (!confirm("Are you sure you want to delete this generation history?")) return;
         try {
             const chatRef = doc(db, 'users', currentUser.uid, 'chats', chatId);
             await deleteDoc(chatRef);
-            if (currentChatId === chatId) {
-                resetUI();
-            }
+            if (currentChatId === chatId) resetUI();
         } catch (error) {
-            console.error("Error deleting chat:", error);
-        }
-    }
-
-    async function renameChat(chatId, currentTitle) {
-        const newTitle = prompt("Enter new chat title:", currentTitle);
-        if (!newTitle || newTitle === currentTitle) return;
-        try {
-            const chatRef = doc(db, 'users', currentUser.uid, 'chats', chatId);
-            await updateDoc(chatRef, { title: newTitle });
-        } catch (error) {
-            console.error("Error renaming chat:", error);
+            console.error("Error deleting:", error);
         }
     }
 
@@ -223,67 +171,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (messageUnsubscribe) messageUnsubscribe();
     }
 
-    // --- Settings Persistence ---
+    // --- Settings ---
     function loadSettings() {
-        const settings = JSON.parse(localStorage.getItem('ai_lab_settings')) || {
-            imageStyle: 'pro',
-            textMode: 'helpful',
-            voice: 'nova'
-        };
+        const settings = JSON.parse(localStorage.getItem('ai_lab_settings')) || { imageStyle: 'pro' };
         if (imageStyleSelect) imageStyleSelect.value = settings.imageStyle;
-        if (textModeSelect) textModeSelect.value = settings.textMode;
-        if (voiceSelect) voiceSelect.value = settings.voice;
         return settings;
     }
 
     function saveSettings() {
-        const settings = {
-            imageStyle: imageStyleSelect.value,
-            textMode: textModeSelect.value,
-            voice: voiceSelect.value
-        };
+        const settings = { imageStyle: imageStyleSelect.value };
         localStorage.setItem('ai_lab_settings', JSON.stringify(settings));
-        showToast("Settings updated!", "info");
+        showToast("Style updated!", "info");
     }
 
     if (imageStyleSelect) imageStyleSelect.addEventListener('change', saveSettings);
-    if (textModeSelect) textModeSelect.addEventListener('change', saveSettings);
-    if (voiceSelect) voiceSelect.addEventListener('change', saveSettings);
+    loadSettings();
 
-    const currentSettings = loadSettings();
-
-    // --- Mode Selector Logic ---
-    modeBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            modeBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentAppMode = btn.dataset.mode;
-            
-            // Update input placeholder based on mode
-            if (currentAppMode === 'image') {
-                chatInput.placeholder = "Describe the image for 4K Agent...";
-            } else if (currentAppMode === 'voice') {
-                chatInput.placeholder = "Type to speak...";
-            } else {
-                chatInput.placeholder = "Message ChatGPT...";
-            }
-        });
-    });
-
-    // --- Firebase Auth ---
+    // --- Send Message ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
-
         if (!currentUser) {
-            alert("Please log in to chat!");
+            alert("Please log in first!");
             return;
         }
-
         chatInput.value = '';
         chatInput.style.height = 'auto';
         sendBtn.setAttribute('disabled', 'true');
-
         try {
             if (!currentChatId) {
                 const chatsRef = collection(db, 'users', currentUser.uid, 'chats');
@@ -295,219 +209,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentChatId = newChatDoc.id;
                 selectChat(currentChatId);
             }
-
             await saveMessageToDB('user', text);
         } catch (error) {
             console.error("Firebase Error:", error);
-            alert("Error sending message! Please check your Firebase Firestore rules. They might be blocking read/write access. \n\nMake sure you have created a Firestore Database in test mode.");
             sendBtn.removeAttribute('disabled');
-            chatInput.value = text;
             return;
         }
-        
-        // Route based on selected mode
-        if (currentAppMode === 'image') {
-            const skeletonDiv = appendMessage('bot', '', true);
-            handleImageGeneration(text, skeletonDiv);
-        } else if (currentAppMode === 'voice') {
-            const skeletonDiv = appendMessage('bot', '', true);
-            handleVoiceGeneration(text, skeletonDiv);
-        } else {
-            getAIResponse(text);
-        }
-    }
-
-    async function handleFileUpload(file) {
-        if (!currentUser || !currentChatId) {
-            alert("Please start a chat or log in first!");
-            return;
-        }
-
-        const skeletonDiv = appendMessage('bot', "Uploading file...", true);
-        scrollToBottom();
-
-        try {
-            const fileRef = ref(storage, `users/${currentUser.uid}/chats/${currentChatId}/${Date.now()}_${file.name}`);
-            const snapshot = await uploadBytes(fileRef, file);
-            const downloadURL = await getDownloadURL(snapshot.ref);
-            
-            skeletonDiv.remove();
-            
-            await saveMessageToDB('user', `Uploaded a file: ${file.name}`, downloadURL, file.type);
-            
-            // If it's an image, use Vision capability
-            if (file.type.startsWith('image/')) {
-                getAIResponse(`I have uploaded an image: ${file.name}. Please describe it or wait for my instructions.`, downloadURL);
-            } else {
-                getAIResponse(`I have uploaded a document: ${file.name}. Please acknowledge it.`);
-            }
-        } catch (error) {
-            console.error("Upload error:", error);
-            skeletonDiv.remove();
-            alert("Failed to upload file. Make sure you have enabled Firebase Storage in your console.");
-        }
-    }
-
-    async function getAIResponse(userText, mediaUrl = null) {
         const skeletonDiv = appendMessage('bot', '', true);
-        scrollToBottom();
-
-        const settings = loadSettings();
-        let systemPrompt = 'You are Chandra AI, a highly advanced multimodal assistant created by CHANDRA MONDAL. You are powered by the 4K Agent, capable of generating hyper-realistic 4K resolution images. You are helpful, creative, and professional. You can see images if a URL is provided.';
-        
-        if (settings.textMode === 'creative') {
-            systemPrompt = 'You are a master storyteller and creative writer created by CHANDRA MONDAL. Your descriptions are vivid and you can guide the 4K Agent to create stunning visual art.';
-        } else if (settings.textMode === 'coder') {
-            systemPrompt = 'You are Chandra AI, an expert software engineer created by CHANDRA MONDAL. You provide clean, optimized code and can assist with UI/UX design via the 4K Agent.';
-        }
-
-        const imageKeywords = ['image', 'generate', 'create', 'draw', 'picture', 'photo', 'painting', 'sketch', 'imagine'];
-        const isImageRequest = imageKeywords.some(keyword => userText.toLowerCase().includes(keyword));
-
-        // If it looks like an image request and we aren't already in image mode, 
-        // give the user what they want using the 4K Agent logic
-        if (isImageRequest && currentAppMode !== 'image') {
-            skeletonDiv.remove();
-            console.log("Auto-detected image request. Switching to 4K Agent logic...");
-            const newSkeleton = appendMessage('bot', '', true);
-            handleImageGeneration(userText, newSkeleton);
-            return;
-        }
-
-        const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
-        const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
-
-        // Determine model based on settings or auto-detection
-        let modelType = settings.textMode;
-        if (modelType === 'helpful') modelType = 'nvidia';
-        if (modelType === 'coder') modelType = 'deepseek';
-        if (modelType === 'claude') modelType = 'claude';
-        
-        // Auto-switch to deepseek for coding if helpful mode is active
-        if (modelType === 'nvidia' && isCoding) modelType = 'deepseek';
-
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: modelType,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: mediaUrl ? [
-                            { type: 'text', text: userText },
-                            { type: 'image_url', image_url: { url: mediaUrl } }
-                        ] : userText }
-                    ]
-                })
-            });
-
-            if (!response.ok) throw new Error("Server Response Error");
-
-            const data = await response.json();
-            const replyText = data.choices[0].message.content;
-
-            skeletonDiv.remove();
-            await saveMessageToDB('bot', replyText);
-        } catch (error) {
-            console.error("AI Error:", error);
-            skeletonDiv.remove();
-            
-            let errorMsg = "Sorry, I'm having trouble connecting to the AI server.";
-            if (window.location.hostname.includes('github.io')) {
-                errorMsg = "<strong>Backend Connection Error:</strong> You are on GitHub Pages, which doesn't support running the backend (server.js). Please host your backend on Render or Railway and update the API URL in script.js.";
-            } else {
-                errorMsg = `Error: ${error.message}. Make sure your local server is running on port 3000.`;
-            }
-            
-            appendMessage('bot', errorMsg);
-            sendBtn.removeAttribute('disabled');
-        }
-        scrollToBottom();
-    }
-
-    async function handleVoiceGeneration(prompt, skeletonDiv) {
-        try {
-            const settings = loadSettings();
-            const cleanText = prompt.substring(0, 1000);
-            const audioUrl = `${API_BASE_URL}/api/proxy/audio?text=${encodeURIComponent(cleanText)}&voice=${settings.voice}`;
-            
-            skeletonDiv.remove();
-            const replyText = `I have generated a voice note for your text: "${cleanText.substring(0, 50)}..."`;
-            
-            // Append as a playable audio message
-            const messageDiv = appendMessage('bot', replyText);
-            const mediaWrapper = document.createElement('div');
-            mediaWrapper.className = 'message-media';
-            mediaWrapper.style.marginTop = '12px';
-            mediaWrapper.innerHTML = `
-                <audio controls src="${audioUrl}" style="width: 100%; border-radius: 12px;"></audio>
-                <button onclick="downloadMedia('${audioUrl}', 'ai-voice-${Date.now()}.mp3')" class="msg-action-btn" style="margin-top: 10px; border-color: #ffd700; color: #ffd700;">
-                    <i class="fa-solid fa-download"></i> Download Voice Note
-                </button>
-            `;
-            messageDiv.querySelector('.message-body').appendChild(mediaWrapper);
-            
-            await saveMessageToDB('bot', replyText, audioUrl, 'audio/mpeg');
-            showToast("Voice generated!", "success");
-
-        } catch (error) {
-            console.error("Voice Gen Error:", error);
-            skeletonDiv.remove();
-            appendMessage('bot', "Sorry, I couldn't generate that voice note.");
-        }
-        sendBtn.removeAttribute('disabled');
+        handleImageGeneration(text, skeletonDiv);
     }
 
     async function handleImageGeneration(prompt, skeletonDiv) {
         try {
             const settings = loadSettings();
-            let cleanPrompt = prompt.replace(/generate an image of|generate image of|draw a picture of|draw a|create a picture of|create an image of/gi, '').trim();
-            
+            let cleanPrompt = prompt.replace(/generate an image of|draw a picture of|create/gi, '').trim();
             let styleWrapper = "";
-            let negativePrompt = "(deformed, distorted, disfigured:1.3), poorly drawn, bad anatomy, wrong anatomy, extra limb, missing limb, floating limbs, (mutated hands and fingers:1.4), disconnected limbs, mutation, mutated, ugly, disgusting, blurry, amputation";
-
             if (settings.imageStyle === 'pro') {
-                styleWrapper = `hyper-realistic 8K image of ${cleanPrompt}. ultra-detailed, lifelike, high-resolution, sharp, vibrant colors, photorealistic, cinematic lighting, masterpiece, sharp focus, volumetric lighting, 8k uhd`;
+                styleWrapper = `hyper-realistic 8K image of ${cleanPrompt}. ultra-detailed, photorealistic, cinematic lighting, masterpiece, 8k uhd`;
             } else if (settings.imageStyle === 'anime') {
-                styleWrapper = `vibrant anime style illustration of ${cleanPrompt}. high quality digital art, studio ghibli style, sharp lines, colorful, aesthetic, 4k`;
+                styleWrapper = `vibrant anime style illustration of ${cleanPrompt}. high quality digital art, studio ghibli style, colorful, 4k`;
             } else if (settings.imageStyle === 'cinematic') {
-                styleWrapper = `cinematic 3D render of ${cleanPrompt}. unreal engine 5, octane render, volumetric fog, moody lighting, highly detailed, photorealistic, 8k`;
+                styleWrapper = `cinematic 3D render of ${cleanPrompt}. unreal engine 5, octane render, moody lighting, highly detailed, 8k`;
             } else {
-                styleWrapper = `high quality image of ${cleanPrompt}. 4k resolution, clear, bright`;
+                styleWrapper = `high quality image of ${cleanPrompt}. 4k resolution, clear`;
             }
-
-            // Detect aspect ratio from prompt (e.g., 16:9, 1:1)
-            const aspectMatch = prompt.match(/\b(1:1|16:9|9:16|4:3|3:4|21:9|4:5|5:4)\b/);
+            const aspectMatch = prompt.match(/\b(1:1|16:9|9:16|4:3|3:4|21:9)\b/);
             const aspect = aspectMatch ? aspectMatch[1] : '1:1';
-
-            // Detect resolution from prompt (2K, 4K) - triggers Nano Banana Pro
             const resMatch = prompt.match(/\b(2K|4K)\b/i);
             const resolution = resMatch ? resMatch[1].toUpperCase() : '';
-
-            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}&model=${settings.imageModel || 'gemini-3-pro'}`;
-            
+            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}&model=flux`;
             const img = new Image();
             img.src = imageUrl;
-            
             img.onload = async () => {
                 if (skeletonDiv) skeletonDiv.remove();
                 const replyText = `Here is the image I generated for: **${cleanPrompt}**`;
-                appendMessage('bot', replyText, false, imageUrl, 'image/png');
+                appendMessage('bot', replyText, false, new Date(), imageUrl, 'image/png');
                 await saveMessageToDB('bot', replyText, imageUrl, 'image/png');
-                showToast("Image generated successfully!");
+                showToast("Image generated!");
                 sendBtn.removeAttribute('disabled');
             };
-            
             img.onerror = () => {
+                if (skeletonDiv) skeletonDiv.remove();
+                appendMessage('bot', "Sorry, I couldn't generate that image.");
                 sendBtn.removeAttribute('disabled');
-                throw new Error("Image failed to load");
             };
-
         } catch (error) {
             console.error("Image Gen Error:", error);
             if (skeletonDiv) skeletonDiv.remove();
-            appendMessage('bot', "Sorry, I couldn't generate that image right now.");
             sendBtn.removeAttribute('disabled');
         }
     }
@@ -523,7 +271,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 fileType: fileType,
                 timestamp: serverTimestamp()
             });
-            
             const chatRef = doc(db, 'users', currentUser.uid, 'chats', currentChatId);
             await updateDoc(chatRef, { updatedAt: serverTimestamp() });
         } catch (error) {
@@ -532,257 +279,66 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI Helpers ---
-    // --- Advanced Features ---
-
-    // 1. Voice Input (Speech to Text)
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-
-        voiceBtn.addEventListener('click', () => {
-            if (voiceBtn.classList.contains('listening')) {
-                recognition.stop();
-            } else {
-                recognition.start();
-                voiceBtn.classList.add('listening');
-                showToast("Listening...", "info");
-            }
-        });
-
-        recognition.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            chatInput.value = transcript;
-            voiceBtn.classList.remove('listening');
-            sendMessage();
-        };
-
-        recognition.onerror = () => {
-            voiceBtn.classList.remove('listening');
-            showToast("Speech recognition failed.", "error");
-        };
-
-        recognition.onend = () => {
-            voiceBtn.classList.remove('listening');
-        };
-    } else {
-        voiceBtn.style.display = 'none';
-    }
-
-    // 2. Voice Output (Text to Speech - AI Powered)
-    let currentAudio = null;
-
-    async function speak(text) {
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
-        }
-
-        const settings = loadSettings();
-        const cleanText = text.replace(/[*#`_]/g, '').substring(0, 1000);
-        
-        // Using selected AI Voice
-        const audioUrl = `/api/proxy/audio?text=${encodeURIComponent(cleanText)}&voice=${settings.voice}`;
-        
-        currentAudio = new Audio(audioUrl);
-        
-        currentAudio.onplay = () => {
-            stopSpeakBtn.style.display = 'flex';
-        };
-        
-        currentAudio.onended = () => {
-            stopSpeakBtn.style.display = 'none';
-            currentAudio = null;
-        };
-
-        currentAudio.onerror = () => {
-            console.error("AI Voice failed, falling back to system voice.");
-            const utterance = new SpeechSynthesisUtterance(text);
-            window.speechSynthesis.speak(utterance);
-        };
-
-        currentAudio.play();
-    }
-
-    stopSpeakBtn.addEventListener('click', () => {
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
-        }
-        window.speechSynthesis.cancel();
-        stopSpeakBtn.style.display = 'none';
-        showToast("Speech stopped", "info");
-    });
-
-    // 3. Toast Notifications
-    function showToast(message, type = "success") {
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-info'}"></i><span>${message}</span>`;
-        toastContainer.appendChild(toast);
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    }
-
-    // 4. Drag and Drop
-    inputContainer.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        inputContainer.classList.add('drag-over');
-    });
-
-    inputContainer.addEventListener('dragleave', () => {
-        inputContainer.classList.remove('drag-over');
-    });
-
-    inputContainer.addEventListener('drop', (e) => {
-        e.preventDefault();
-        inputContainer.classList.remove('drag-over');
-        const file = e.dataTransfer.files[0];
-        if (file) handleFileUpload(file);
-    });
-
-    // 5. Reactions Logic
-    function handleReaction(btn, type) {
-        const parent = btn.parentElement;
-        parent.querySelectorAll('.msg-action-btn').forEach(b => b.style.color = '');
-        btn.style.color = type === 'up' ? '#10a37f' : '#ff4d4d';
-        showToast(`Feedback saved!`, "success");
-    }
-
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, fileType = null) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
-
-        let avatarContent = '';
-        let senderName = '';
-        
-        if (sender === 'user') {
-            if (currentUser && currentUser.photoURL) {
-                avatarContent = `<img src="${currentUser.photoURL}" alt="User" style="width:100%; height:100%; border-radius:4px;">`;
-            } else {
-                avatarContent = 'U';
-            }
-            senderName = (currentUser && currentUser.displayName) ? currentUser.displayName.split(' ')[0] : 'User';
-        } else {
-            avatarContent = '<i class="fa-solid fa-robot"></i>';
-            senderName = 'Chandra AI';
-        }
-
+        let avatarContent = sender === 'user' 
+            ? (currentUser && currentUser.photoURL ? `<img src="${currentUser.photoURL}" alt="User" style="width:100%; height:100%; border-radius:4px;">` : 'U')
+            : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
+        const senderName = sender === 'user' ? (currentUser?.displayName?.split(' ')[0] || 'User') : '4K Agent';
         const timeStr = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...';
-
         let mediaContent = '';
-        if (fileUrl) {
-            if (fileType && fileType.startsWith('image/')) {
-                mediaContent = `
-                    <div class="message-media" style="margin-top: 10px;">
-                        <img src="${fileUrl}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: var(--shadow-md); display: block;">
-                        <button onclick="downloadMedia('${fileUrl}', 'ai-image-${Date.now()}.png')" class="msg-action-btn" style="margin-top: 12px; background: var(--accent-gradient); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
-                            <i class="fa-solid fa-download"></i> Download Image
-                        </button>
-                    </div>`;
-            } else {
-                mediaContent = `<div class="message-media" style="margin-top: 8px;">
-                    <a href="${fileUrl}" target="_blank" style="display: flex; align-items: center; gap: 8px; padding: 10px; background: var(--bg-tertiary); border-radius: 8px; text-decoration: none; color: var(--text-primary); border: 1px solid var(--border-color);">
-                        <i class="fa-solid fa-file"></i>
-                        <span>Download Attachment</span>
-                    </a>
+        if (fileUrl && fileType?.startsWith('image/')) {
+            mediaContent = `
+                <div class="message-media" style="margin-top: 10px;">
+                    <img src="${fileUrl}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: var(--shadow-md); display: block;">
+                    <button onclick="window.open('${fileUrl}')" class="msg-action-btn" style="margin-top: 12px; background: var(--accent-gradient); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer;">
+                        <i class="fa-solid fa-download"></i> Open Original
+                    </button>
                 </div>`;
-            }
         }
-
         messageDiv.innerHTML = `
             <div class="msg-avatar ${sender}">${avatarContent}</div>
             <div class="msg-body">
                 <div class="message-header">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <span class="msg-sender">${senderName}</span>
-                        <span class="message-time">${timeStr}</span>
-                    </div>
-                    ${!isSkeleton && sender === 'bot' ? `
-                        <button class="msg-action-btn speak-btn" title="Listen"><i class="fa-solid fa-volume-high"></i></button>
-                    ` : ''}
+                    <span class="msg-sender">${senderName}</span>
+                    <span class="message-time">${timeStr}</span>
                 </div>
                 <div class="msg-text">
-                    ${isSkeleton ? `
-                        <div class="skeleton-line short"></div>
-                        <div class="skeleton-line medium"></div>
-                        <div class="skeleton-line"></div>
-                    ` : formatText(text)}
+                    ${isSkeleton ? '<div class="skeleton-line medium"></div><div class="skeleton-line"></div>' : formatText(text)}
                 </div>
                 ${mediaContent}
-                ${!isSkeleton && sender === 'bot' ? `
-                    <div class="message-actions">
-                        <div class="reaction-group">
-                            <button class="msg-action-btn thumb-up" title="Helpful"><i class="fa-regular fa-thumbs-up"></i></button>
-                            <button class="msg-action-btn thumb-down" title="Not helpful"><i class="fa-regular fa-thumbs-down"></i></button>
-                        </div>
-                        <button class="msg-action-btn copy-btn" title="Copy"><i class="fa-regular fa-copy"></i> Copy</button>
-                    </div>
-                ` : ''}
             </div>
         `;
-
         messagesWrapper.appendChild(messageDiv);
-        
-        if (!isSkeleton && sender === 'bot') {
-            const copyBtn = messageDiv.querySelector('.copy-btn');
-            copyBtn.addEventListener('click', () => {
-                navigator.clipboard.writeText(text);
-                copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
-                showToast("Copied to clipboard!");
-                setTimeout(() => copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Copy', 2000);
-            });
-
-            const speakBtn = messageDiv.querySelector('.speak-btn');
-            speakBtn.addEventListener('click', () => speak(text));
-
-            const upBtn = messageDiv.querySelector('.thumb-up');
-            const downBtn = messageDiv.querySelector('.thumb-down');
-            upBtn.addEventListener('click', () => handleReaction(upBtn, 'up'));
-            downBtn.addEventListener('click', () => handleReaction(downBtn, 'down'));
-            
-            Prism.highlightAllUnder(messageDiv);
-        }
-        
+        scrollToBottom();
         return messageDiv;
     }
 
     function formatText(text) {
-        if (typeof marked !== 'undefined') {
-            return marked.parse(text);
-        }
-        // Fallback if marked is not loaded
-        return text.replace(/\n/g, '<br>');
-    }
-
-    function escapeHTML(str) {
-        return str.replace(/[&<>'"]/g, tag => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[tag] || tag));
+        return typeof marked !== 'undefined' ? marked.parse(text) : text.replace(/\n/g, '<br>');
     }
 
     function scrollToBottom() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
+    function showToast(message, type = "success") {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
     themeToggleBtn.addEventListener('click', () => {
         document.body.classList.toggle('light-mode');
-        const icon = themeToggleBtn.querySelector('i');
         const isLight = document.body.classList.contains('light-mode');
-        icon.className = isLight ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-        themeToggleBtn.querySelector('span').textContent = isLight ? 'Light Mode' : 'Dark Mode';
+        themeToggleBtn.querySelector('i').className = isLight ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
     });
 
-    sidebarOverlay.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        sidebarOverlay.style.display = 'none';
-    });
-
-    mobileMenuBtn.addEventListener('click', () => {
-        sidebar.classList.add('open');
-        sidebarOverlay.style.display = 'block';
-    });
+    sidebarOverlay.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOverlay.style.display = 'none'; });
+    mobileMenuBtn.addEventListener('click', () => { sidebar.classList.add('open'); sidebarOverlay.style.display = 'block'; });
 
     chatInput.addEventListener('input', function() {
         this.style.height = 'auto';
@@ -790,58 +346,14 @@ document.addEventListener('DOMContentLoaded', () => {
         sendBtn.disabled = !this.value.trim();
     });
 
-    chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-
+    chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     sendBtn.addEventListener('click', sendMessage);
-
-    attachBtn.addEventListener('click', () => {
-        fileInput.click();
-    });
-
-    fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            handleFileUpload(file);
-        }
-    });
-
-    suggestionCards.forEach(card => {
+    
+    // Suggestion Cards
+    document.querySelectorAll('.suggestion-card').forEach(card => {
         card.addEventListener('click', () => {
-            chatInput.value = card.querySelector('strong').innerText + " " + card.querySelector('.subtext').innerText;
+            chatInput.value = card.querySelector('p').innerText + " " + card.querySelector('.subtext').innerText;
             sendMessage();
         });
     });
-
-    newChatBtn.addEventListener('click', () => {
-        resetUI();
-        sidebar.classList.remove('open');
-        sidebarOverlay.classList.remove('active');
-    });
-
-    // Global helper for downloading media (especially cross-origin images)
-    window.downloadMedia = async (url, filename) => {
-        try {
-            showToast("Starting download...", "info");
-            const response = await fetch(url);
-            const blob = await response.blob();
-            const blobUrl = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(blobUrl);
-            showToast("Download complete!", "success");
-        } catch (error) {
-            console.error("Download failed:", error);
-            showToast("Download failed. Opening in new tab...", "error");
-            window.open(url, '_blank');
-        }
-    };
 });

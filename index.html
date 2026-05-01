@@ -32,28 +32,12 @@
             </div>
 
             <div class="sidebar-section">
-                <div class="section-title">AI Lab</div>
+                <div class="section-title">4K Agent Settings</div>
                 <div class="setting-item">
                     <select id="image-style-select">
                         <option value="pro">4K Agent Pro</option>
                         <option value="anime">Anime Style</option>
                         <option value="cinematic">Cinematic 3D</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <select id="text-mode-select">
-                        <option value="helpful">Helpful Mode (NVIDIA)</option>
-                        <option value="coder">Coding Mode (DeepSeek)</option>
-                        <option value="claude">OpenClaw Mode (Claude 3.5)</option>
-                        <option value="kimi">Kimi Mode</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <select id="voice-select">
-                        <option value="nova">Nova (Default)</option>
-                        <option value="shimmer">Shimmer</option>
-                        <option value="echo">Echo</option>
-                        <option value="onyx">Onyx</option>
                     </select>
                 </div>
             </div>
@@ -74,7 +58,7 @@
         <main class="chat-main">
             <header class="chat-header">
                 <i class="fa-solid fa-bars menu-toggle" id="mobile-menu-btn"></i>
-                <div class="model-info">Chandra AI</div>
+                <div class="model-info">4K Agent Image Generator</div>
                 <div style="width: 24px;"></div> <!-- Spacer -->
             </header>
             
@@ -82,26 +66,26 @@
                 <!-- Welcome Screen -->
                 <div class="welcome-screen" id="welcome-screen">
                     <div class="welcome-logo">
-                        <i class="fa-solid fa-robot"></i>
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
                     </div>
-                    <h1>What can I help with?</h1>
+                    <h1>What should I imagine?</h1>
                     
                     <div class="suggestion-grid">
                         <div class="suggestion-card">
-                            <p><strong>Explain</strong></p>
-                            <p class="subtext">quantum computing simply</p>
+                            <p><strong>A futuristic city</strong></p>
+                            <p class="subtext">with neon lights and flying cars</p>
                         </div>
                         <div class="suggestion-card">
-                            <p><strong>Write code</strong></p>
-                            <p class="subtext">for a simple snake game</p>
+                            <p><strong>A serene mountain</strong></p>
+                            <p class="subtext">landscape at sunset, 4K resolution</p>
                         </div>
                         <div class="suggestion-card">
-                            <p><strong>Plan a trip</strong></p>
-                            <p class="subtext">to the Swiss Alps</p>
+                            <p><strong>An astronaut cat</strong></p>
+                            <p class="subtext">floating in deep space, hyper-realistic</p>
                         </div>
                         <div class="suggestion-card">
-                            <p><strong>Help me write</strong></p>
-                            <p class="subtext">a professional email</p>
+                            <p><strong>A cyberpunk street</strong></p>
+                            <p class="subtext">in the rain, cinematic lighting</p>
                         </div>
                     </div>
                 </div>
@@ -113,7 +97,7 @@
             <footer class="input-area">
                 <div class="input-container">
                     <div class="input-row">
-                        <textarea id="chat-input" placeholder="Message Chandra AI..." rows="1"></textarea>
+                        <textarea id="chat-input" placeholder="Describe the image you want to generate..." rows="1"></textarea>
                         <button class="send-btn" id="send-btn" disabled>
                             <i class="fa-solid fa-arrow-up"></i>
                         </button>
@@ -122,13 +106,6 @@
                         <div class="icon-actions">
                             <input type="file" id="file-input" style="display: none;">
                             <button class="icon-btn" id="attach-btn"><i class="fa-solid fa-paperclip"></i></button>
-                            <button class="icon-btn" id="voice-btn"><i class="fa-solid fa-microphone"></i></button>
-                            <button class="icon-btn" id="stop-speak-btn" style="display:none; color: #ff4d4d;"><i class="fa-solid fa-stop"></i></button>
-                        </div>
-                        <div class="mode-pills">
-                            <div class="mode-pill active" data-mode="text">Chat</div>
-                            <div class="mode-pill" data-mode="image">4K Agent</div>
-                            <div class="mode-pill" data-mode="voice">Voice</div>
                         </div>
                     </div>
                 </div>
