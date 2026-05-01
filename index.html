@@ -75,6 +75,9 @@
             </div>
 
             <div class="sidebar-footer">
+                <div class="credits" style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.5rem; padding: 0 0.75rem;">
+                    Powered by <a href="https://github.com/openclaw/openclaw" target="_blank" style="color: inherit;">OpenClaw</a> & <a href="https://github.com/zhang0jhon/diffusion-4k" target="_blank" style="color: inherit;">Diffusion-4K</a>
+                </div>
                 <button class="footer-btn" id="theme-toggle">
                     <i class="fa-regular fa-sun"></i>
                     <span>Theme</span>
@@ -90,7 +93,7 @@
         <main class="chat-main">
             <header class="chat-header">
                 <i class="fa-solid fa-bars menu-toggle" id="mobile-menu-btn"></i>
-                <div class="model-info">ChandraXImage</div>
+                <div class="model-info">ChandraXImage PRO</div>
                 <div style="width: 24px;"></div> <!-- Spacer -->
             </header>
             
@@ -100,7 +103,8 @@
                     <div class="welcome-logo">
                         <i class="fa-solid fa-wand-magic-sparkles"></i>
                     </div>
-                    <h1>What should I imagine?</h1>
+                    <h1>What should ChandraXImage imagine?</h1>
+                    <p style="color: var(--text-muted); margin-bottom: 2rem; font-size: 0.9rem;">Ultra-High-Resolution 4K Synthesis powered by Diffusion-4K</p>
                     
                     <div class="suggestion-grid">
                         <div class="suggestion-card">
@@ -129,16 +133,10 @@
             <footer class="input-area">
                 <div class="input-container">
                     <div class="input-row">
-                        <textarea id="chat-input" placeholder="Describe the image you want to generate..." rows="1"></textarea>
+                        <textarea id="chat-input" placeholder="Describe the image (e.g. 'A black hole in 4K')..." rows="1"></textarea>
                         <button class="send-btn" id="send-btn" disabled>
                             <i class="fa-solid fa-arrow-up"></i>
                         </button>
-                    </div>
-                    <div class="input-footer">
-                        <div class="icon-actions">
-                            <input type="file" id="file-input" style="display: none;">
-                            <button class="icon-btn" id="attach-btn"><i class="fa-solid fa-paperclip"></i></button>
-                        </div>
                     </div>
                 </div>
                 <div id="toast-container" style="position:fixed; bottom: 100px; left: 50%; transform: translateX(-50%); z-index: 1000;"></div>
