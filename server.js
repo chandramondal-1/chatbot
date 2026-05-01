@@ -19,12 +19,14 @@ app.post('/api/chat', async (req, res) => {
 
         let apiUrl = "https://integrate.api.nvidia.com/v1/chat/completions";
         let apiKey = process.env.NVIDIA_API_KEY;
-        // Default to a specific valid NVIDIA model name
-        let apiModel = (model === "nvidia" || !model) ? "meta/llama-3.1-8b-instruct" : model;
+        // Default to a high-end NVIDIA model
+        let apiModel = (model === "nvidia" || !model || model === "helpful") ? "meta/llama-3.1-405b-instruct" : model;
 
-        console.log(`Processing chat request with model: ${apiModel}`);
-
-        if (model === 'deepseek') {
+        if (model === 'claude') {
+            apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+            apiKey = process.env.OPENROUTER_API_KEY;
+            apiModel = 'anthropic/claude-3.5-sonnet';
+        } else if (model === 'deepseek') {
             apiUrl = 'https://api.deepseek.com/chat/completions';
             apiKey = process.env.DEEPSEEK_API_KEY;
             apiModel = 'deepseek-chat';

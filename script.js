@@ -375,6 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let modelType = settings.textMode;
         if (modelType === 'helpful') modelType = 'nvidia';
         if (modelType === 'coder') modelType = 'deepseek';
+        if (modelType === 'claude') modelType = 'claude';
         
         // Auto-switch to deepseek for coding if helpful mode is active
         if (modelType === 'nvidia' && isCoding) modelType = 'deepseek';
