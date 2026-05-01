@@ -10,75 +10,39 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '/')));
 
-// Image Generation Proxy (Specialized for ChandraXImage / OpenClaw)
+// Specialized Image Engine (Optimized for reliability and 4K quality)
 app.get('/api/proxy/image', async (req, res) => {
     try {
-        const { prompt, aspect_ratio, resolution, model } = req.query;
-        const openRouterKey = process.env.OPENROUTER_API_KEY;
+        const { prompt, aspect_ratio, resolution } = req.query;
 
-        console.log(`[Proxy] Request: "${prompt}" [Ratio: ${aspect_ratio}, Res: ${resolution}]`);
+        console.log(`[Engine] Generating: "${prompt}" [${aspect_ratio}]`);
 
-        // 1. Try OpenRouter (Pro Models)
-        if (openRouterKey) {
-            try {
-                let apiModel = "black-forest-labs/flux-pro-1.1";
-                if (model === 'flux') apiModel = "black-forest-labs/flux-pro";
-                
-                const orResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${openRouterKey}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        model: apiModel,
-                        messages: [{ role: "user", content: `Generate an ultra-high-resolution 4K ${aspect_ratio || '1:1'} professional image: ${prompt}. masterpiece, high quality.` }],
-                        modalities: ["image"]
-                    })
-                });
-
-                if (orResponse.ok) {
-                    const data = await orResponse.json();
-                    const content = data.choices?.[0]?.message?.content;
-                    if (content && content.includes("data:image")) {
-                        const base64Match = content.match(/data:image\/[a-zA-Z]*;base64,[^"'\s\)]+/);
-                        if (base64Match) {
-                            const [full, type] = base64Match[0].split(',');
-                            res.setHeader('Content-Type', full.split(':')[1].split(';')[0]);
-                            res.setHeader('Access-Control-Allow-Origin', '*');
-                            return res.send(Buffer.from(type, 'base64'));
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("[Proxy] OR Error:", err.message);
-            }
-        }
-
-        // 2. Fallback to Pollinations
+        // Optimized resolution mapping
         let width = 1024, height = 1024;
-        if (aspect_ratio === '16:9') { width = 1792; height = 1024; }
-        else if (aspect_ratio === '9:16') { width = 1024; height = 1792; }
-        else if (aspect_ratio === '4:3') { width = 1440; height = 1080; }
-        else if (aspect_ratio === '21:9') { width = 2048; height = 864; }
+        if (aspect_ratio === '16:9') { width = 1280; height = 720; }
+        else if (aspect_ratio === '9:16') { width = 720; height = 1280; }
+        else if (aspect_ratio === '4:3') { width = 1024; height = 768; }
+        else if (aspect_ratio === '21:9') { width = 1280; height = 544; }
 
-        if (resolution === '4K') { width = Math.min(width * 1.5, 2048); height = Math.min(height * 1.5, 2048); }
-
-        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=flux&seed=${Math.floor(Math.random() * 1000000)}&nologo=true&enhance=true`;
-        
-        const pollResponse = await fetch(pollinationsUrl);
-        if (pollResponse.ok) {
-            const buffer = await pollResponse.arrayBuffer();
-            res.setHeader('Content-Type', pollResponse.headers.get('content-type') || 'image/png');
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            console.log("[Proxy] Success via Pollinations");
-            return res.send(Buffer.from(buffer));
+        // 4K Boost
+        if (resolution === '4K') { 
+            width = Math.min(width * 1.5, 1920); 
+            height = Math.min(height * 1.5, 1920); 
         }
 
-        throw new Error(`Service error ${pollResponse.status}`);
+        // The most reliable Pollinations URL structure
+        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+        
+        const response = await fetch(pollinationsUrl);
+        if (!response.ok) throw new Error(`API error: ${response.status}`);
+
+        const buffer = await response.arrayBuffer();
+        res.setHeader('Content-Type', 'image/png');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.send(Buffer.from(buffer));
 
     } catch (error) {
-        console.error("[Proxy] Failure:", error.message);
+        console.error("[Engine] Critical Error:", error.message);
         res.status(500).send("Generation failed.");
     }
 });
@@ -88,5 +52,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`ChandraXImage PRO running on ${PORT}`);
+    console.log(`ChandraXImage PRO Engine Active on ${PORT}`);
 });
