@@ -30,8 +30,11 @@ app.get('/api/proxy/image', async (req, res) => {
             height = Math.min(height * 1.5, 1920); 
         }
 
+        // LLM-driven prompt enhancement (4K-Agent TACO Group style)
+        const enhancedPrompt = `${prompt}. ultra-high resolution synthesis, 4K-Agent professional grade, meticulously detailed textures, masterpiece quality, sharp focus.`;
+
         // The most reliable Pollinations URL structure
-        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
+        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}&enhance=true`;
         
         const response = await fetch(pollinationsUrl);
         if (!response.ok) throw new Error(`API error: ${response.status}`);
