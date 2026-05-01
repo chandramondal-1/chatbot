@@ -52,6 +52,22 @@
                 </div>
 
                 <div class="setting-item">
+                    <label>Connection Hub</label>
+                    <select id="connection-mode">
+                        <option value="cloud">Cloud (Stable Diffusion)</option>
+                        <option value="a1111">Local A1111 (Private)</option>
+                        <option value="localai">LocalAI (Open-Source)</option>
+                    </select>
+                </div>
+
+                <div id="local-settings" style="display: none;">
+                    <div class="setting-item">
+                        <label>API URL</label>
+                        <input type="text" id="api-url" placeholder="http://127.0.0.1:7860" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: white; padding: 6px; border-radius: 4px; font-size: 0.75rem;">
+                    </div>
+                </div>
+
+                <div class="setting-item">
                     <label>Sampling Steps</label>
                     <input type="range" id="steps-slider" min="10" max="100" value="30" step="1">
                     <div class="slider-value" id="steps-val">30</div>
@@ -63,13 +79,6 @@
                     <div class="slider-value" id="cfg-val">7.5</div>
                 </div>
 
-                <div class="setting-item">
-                    <label>Synthesis Engine</label>
-                    <select id="image-model-select">
-                        <option value="automatic1111">Stable Diffusion (A1111)</option>
-                        <option value="localai">LocalAI (Open-Source)</option>
-                    </select>
-                </div>
             </div>
 
             <div class="sidebar-footer">

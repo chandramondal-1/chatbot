@@ -12,7 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Settings elements
     const imageStyleSelect = document.getElementById('image-style-select');
     const aspectRatioSelect = document.getElementById('aspect-ratio-select');
-    const imageModelSelect = document.getElementById('image-model-select');
+    const connectionMode = document.getElementById('connection-mode');
+    const localSettings = document.getElementById('local-settings');
+    const apiUrlInput = document.getElementById('api-url');
     const stepsSlider = document.getElementById('steps-slider');
     const cfgSlider = document.getElementById('cfg-slider');
     const stepsVal = document.getElementById('steps-val');
@@ -20,6 +22,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggleBtn = document.getElementById('theme-toggle');
 
     let currentChatId = null;
+
+    // --- Connection Mode Toggle ---
+    connectionMode.onchange = () => {
+        localSettings.style.display = connectionMode.value === 'cloud' ? 'none' : 'block';
+        if (connectionMode.value === 'a1111') apiUrlInput.placeholder = "http://127.0.0.1:7860";
+        if (connectionMode.value === 'localai') apiUrlInput.placeholder = "http://127.0.0.1:8080";
+        localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
+    };
 
     // --- History Logic ---
     function saveToHistory(prompt) {
@@ -51,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Core Generation Logic (Stable Diffusion Optimized) ---
+    // --- Core Synthesis Engine (Cloud & Local Hub) ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
@@ -70,67 +80,86 @@ document.addEventListener('DOMContentLoaded', () => {
         const settings = loadSettings();
         const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim();
 
-        // 1. Resolution Logic
+        // 1. Resolution & Style
         let w = 1024, h = 1024;
         if (settings.aspectRatio === '16:9') { w = 1280; h = 720; }
         else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
         else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
 
-        // 2. Pro-Grade Synthesis Mode (A1111 vs LocalAI)
-        let modeTag = settings.model === 'automatic1111' ? 'A1111 Stable Diffusion' : 'LocalAI Open-Source';
-        let finalPrompt = `${modeTag} synthesis: ${cleanPrompt}, masterpiece, highly detailed, professional quality, (sampling steps: ${settings.steps}), (CFG scale: ${settings.cfg}), sharp focus`;
-
+        let finalPrompt = cleanPrompt;
         if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime style`;
         else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render`;
         else if (settings.imageStyle === 'artistic') finalPrompt += `, fine art oil painting`;
 
-        let retries = 0;
-        const maxRetries = 2;
-
-        const attemptSynthesis = () => {
-            const seed = Math.floor(Math.random() * 1000000);
-            
-            // 3. Robust Engine URL
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
-            
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            
-            const timeout = setTimeout(() => {
-                img.src = "";
-                handleFailure();
-            }, 50000); 
-
-            img.onload = () => {
-                clearTimeout(timeout);
-                if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                const replyText = `**Prompt:** ${cleanPrompt}\n**Engine:** ${modeTag} (Steps: ${settings.steps} | CFG: ${settings.cfg})`;
-                appendMessage('bot', replyText, false, new Date(), imageUrl);
-                showToast("Synthesis ready!");
-                sendBtn.removeAttribute('disabled');
-            };
-
-            img.onerror = () => {
-                clearTimeout(timeout);
-                handleFailure();
-            };
-
-            img.src = imageUrl;
-        };
-
-        const handleFailure = () => {
-            if (retries < maxRetries) {
-                retries++;
-                console.warn(`Synthesis retry ${retries}...`);
-                attemptSynthesis();
-            } else {
-                if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                appendMessage('bot', "The synthesis engine is momentarily busy. Please try reducing Sampling Steps or refreshing.");
-                sendBtn.removeAttribute('disabled');
+        // 2. Synthesis Logic (Cloud vs Local API)
+        try {
+            if (settings.mode === 'cloud') {
+                await performCloudSynthesis(finalPrompt, w, h, settings, skeletonDiv);
+            } else if (settings.mode === 'a1111') {
+                await performA1111Synthesis(finalPrompt, w, h, settings, skeletonDiv);
+            } else if (settings.mode === 'localai') {
+                await performLocalAISynthesis(finalPrompt, w, h, settings, skeletonDiv);
             }
-        };
+        } catch (error) {
+            if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
+            appendMessage('bot', `Connection Failed: ${error.message}. If using Local mode, ensure your server is running with --cors-allow-origin=*`);
+            sendBtn.removeAttribute('disabled');
+        }
+    }
 
-        attemptSynthesis();
+    // --- Cloud Synthesis (Pollinations Fallback) ---
+    async function performCloudSynthesis(prompt, w, h, settings, skeleton) {
+        const seed = Math.floor(Math.random() * 1000000);
+        const cloudPrompt = `Cloud synthesis: ${prompt}, professional quality, (steps: ${settings.steps}), (cfg: ${settings.cfg})`;
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cloudPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
+        
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => finalizeSynthesis(imageUrl, "Cloud Stable Diffusion", settings, skeleton);
+        img.onerror = () => { throw new Error("Cloud engine busy"); };
+        img.src = imageUrl;
+    }
+
+    // --- AUTOMATIC1111 API Integration ---
+    async function performA1111Synthesis(prompt, w, h, settings, skeleton) {
+        const url = settings.apiUrl || "http://127.0.0.1:7860";
+        const response = await fetch(`${url}/sdapi/v1/txt2img`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: prompt,
+                steps: parseInt(settings.steps),
+                cfg_scale: parseFloat(settings.cfg),
+                width: w,
+                height: h,
+                sampler_name: "Euler a"
+            })
+        });
+        const data = await response.json();
+        const base64Image = `data:image/png;base64,${data.images[0]}`;
+        finalizeSynthesis(base64Image, "Local A1111", settings, skeleton);
+    }
+
+    // --- LocalAI API Integration ---
+    async function performLocalAISynthesis(prompt, w, h, settings, skeleton) {
+        const url = settings.apiUrl || "http://127.0.0.1:8080";
+        const response = await fetch(`${url}/v1/images/generations`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: prompt,
+                size: `${w}x${h}`
+            })
+        });
+        const data = await response.json();
+        finalizeSynthesis(data.data[0].url, "LocalAI", settings, skeleton);
+    }
+
+    function finalizeSynthesis(url, engineName, settings, skeleton) {
+        if (skeleton && skeleton.parentNode) skeleton.remove();
+        appendMessage('bot', `**Engine:** ${engineName} (Steps: ${settings.steps} | CFG: ${settings.cfg})`, false, new Date(), url);
+        showToast("Synthesis successful!");
+        sendBtn.removeAttribute('disabled');
     }
 
     // --- UI Helpers ---
@@ -147,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <img src="${fileUrl}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: block;" crossOrigin="anonymous">
                     <div style="display:flex; gap:10px; margin-top:12px;">
                         <button onclick="downloadFromDOM(this)" class="msg-action-btn" style="background: var(--chandra-gradient); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <i class="fa-solid fa-download"></i> Download 4K Image
+                            <i class="fa-solid fa-download"></i> Download Image
                         </button>
                     </div>
                 </div>`;
@@ -184,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `StableDiffusion-${Date.now()}.png`;
+                link.download = `Synthesis-${Date.now()}.png`;
                 link.click();
             }, 'image/png');
         } catch (e) {
@@ -204,17 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return { 
             imageStyle: imageStyleSelect.value,
             aspectRatio: aspectRatioSelect.value,
-            model: imageModelSelect.value,
+            mode: connectionMode.value,
+            apiUrl: apiUrlInput.value,
             steps: stepsSlider.value,
             cfg: cfgSlider.value
         };
     }
 
-    // --- Listeners ---
     stepsSlider.oninput = () => { stepsVal.innerText = stepsSlider.value; };
     cfgSlider.oninput = () => { cfgVal.innerText = cfgSlider.value; };
 
-    [imageStyleSelect, aspectRatioSelect, imageModelSelect, stepsSlider, cfgSlider].forEach(el => {
+    [imageStyleSelect, aspectRatioSelect, connectionMode, apiUrlInput, stepsSlider, cfgSlider].forEach(el => {
         el.onchange = () => localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
     });
 
