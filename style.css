@@ -474,3 +474,72 @@ textarea {
     box-shadow: var(--shadow-lg);
     border: 2px solid var(--accent-primary);
 }
+
+/* --- Advanced UI Improvements --- */
+:root {
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.05);
+    --hyper-blur: blur(20px) saturate(180%);
+}
+
+.sidebar {
+    background: rgba(10, 10, 10, 0.8) !important;
+    backdrop-filter: var(--hyper-blur) !important;
+    border-right: 1px solid var(--glass-border) !important;
+}
+
+.message.bot {
+    background: var(--glass-bg);
+    backdrop-filter: var(--hyper-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.message.user {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+    box-shadow: 0 4px 15px rgba(124, 77, 255, 0.3);
+}
+
+.input-pill {
+    background: rgba(20, 20, 20, 0.8) !important;
+    backdrop-filter: var(--hyper-blur) !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.input-pill:focus-within {
+    border-color: var(--accent-primary) !important;
+    transform: translateY(-2px);
+}
+
+.nav-btn {
+    transition: all 0.3s ease;
+    border-radius: 12px !important;
+    margin: 2px 0;
+}
+
+.nav-btn:hover {
+    background: var(--glass-bg) !important;
+    transform: translateX(5px);
+}
+
+#logout-btn:hover {
+    color: #ff5252;
+    transform: scale(1.1);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.message {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* User Profile UI */
+#user-profile {
+    animation: fadeIn 0.5s ease;
+}

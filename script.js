@@ -1,4 +1,21 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Firebase Initialization (Placeholder - Replace with your config) ---
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_ID",
+        appId: "YOUR_APP_ID"
+    };
+    
+    // Check if Firebase is available
+    let auth = null;
+    if (typeof firebase !== 'undefined') {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+    }
+
     // --- Elements ---
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
@@ -11,6 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
     
+    // Auth Elements
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const userProfile = document.getElementById('user-profile');
+    const userAvatar = document.getElementById('user-avatar');
+    const userName = document.getElementById('user-name');
+
     // Modal Elements
     const settingsModal = document.getElementById('settings-modal');
     const openSettingsBtn = document.getElementById('open-settings-btn');
@@ -33,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const attachmentPreview = document.getElementById('attachment-preview');
 
     let attachments = [];
+    let currentUser = null;
 
     // --- Initialization ---
     function init() {
@@ -49,6 +74,38 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         updateSliderLabels();
         renderHistory();
+
+        // Auth Listener
+        if (auth) {
+            auth.onAuthStateChanged(user => {
+                currentUser = user;
+                if (user) {
+                    loginBtn.style.display = 'none';
+                    userProfile.style.display = 'block';
+                    userAvatar.src = user.photoURL || 'assets/bot-logo.png';
+                    userName.innerText = user.displayName || 'User';
+                    showToast(`Welcome back, ${user.displayName.split(' ')[0]}!`, "success");
+                } else {
+                    loginBtn.style.display = 'flex';
+                    userProfile.style.display = 'none';
+                }
+            });
+        }
+    }
+
+    // --- Auth Actions ---
+    if (loginBtn) {
+        loginBtn.onclick = () => {
+            if (!auth) return showToast("Firebase not configured", "error");
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).catch(e => showToast(e.message, "error"));
+        };
+    }
+
+    if (logoutBtn) {
+        logoutBtn.onclick = () => {
+            if (auth) auth.signOut().then(() => showToast("Logged out", "info"));
+        };
     }
 
     // --- Modal Control ---
@@ -172,6 +229,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- CHANDRA x IMAGE Core ---
     async function sendMessage() {
+        if (!currentUser) {
+            showToast("Please login to generate images", "error");
+            return;
+        }
+
         const text = chatInput.value.trim();
         const currentAttachments = [...attachments];
         if (!text && currentAttachments.length === 0) return;
@@ -186,9 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let finalPrompt = text;
         try {
-            // STEP 1: EvoLink Expansion (with Direct Fallback)
             const expansionSystemPrompt = "You are CHANDRA x IMAGE Master Prompt Engineer. Expand the user description into a technical 32K prompt. Return ONLY the string.";
-            
             const textResponse = await fetch('https://text.pollinations.ai/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -197,23 +257,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     model: 'gpt-4o'
                 })
             });
-            
-            if (textResponse.ok) {
-                finalPrompt = await textResponse.text();
-            } else {
-                finalPrompt = `${text}, CHANDRA x IMAGE Style, 32K, ultra-detailed, photorealistic`;
-            }
+            if (textResponse.ok) finalPrompt = await textResponse.text();
+            else finalPrompt = `${text}, CHANDRA x IMAGE Style, 32K, photorealistic`;
         } catch (e) {
             finalPrompt = `${text}, CHANDRA x IMAGE Style, 32K, photorealistic`;
         }
 
-        // STEP 2: Synthesis
         const settings = loadSettings();
         const qFactor = parseFloat(settings.quality || 4);
         let w = 512 * qFactor, h = 512 * qFactor;
         if (settings.aspectRatio === '16:9') { w = 1280 * (qFactor/4); h = 720 * (qFactor/4); }
         else if (settings.aspectRatio === '9:16') { w = 720 * (qFactor/4); h = 1280 * (qFactor/4); }
-        
         const MAX_RES = 2048;
         if (w > MAX_RES || h > MAX_RES) { const r = Math.min(MAX_RES/w, MAX_RES/h); w=Math.floor(w*r); h=Math.floor(h*r); }
 
@@ -228,7 +282,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function performCloudSynthesis(prompt, w, h, settings, botMsgDiv) {
         const seed = Math.floor(Math.random() * 1000000);
         const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
-        
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = () => {
@@ -254,8 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
         const div = document.createElement('div'); div.className = `message ${sender}`;
         const avatar = sender === 'user' ? 'U' : `<img src="assets/bot-logo.png" class="bot-avatar-img" onerror="this.outerHTML='<i class=\'fa-solid fa-wand-magic-sparkles\'></i>'">`;
-        const safeText = text || "";
-        const htmlContent = isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(safeText) : safeText);
+        const htmlContent = isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(text || "") : text || "");
 
         div.innerHTML = `
             <div class="msg-avatar ${sender}">${avatar}</div>
