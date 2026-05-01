@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("ChandraXImage 4K-Agent Synthesis Engine v2.1 Active");
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
     const chatContainer = document.getElementById('chat-container');
@@ -34,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const history = JSON.parse(localStorage.getItem('chandra_history')) || [];
         historyList.innerHTML = history.map(item => `
             <li class="history-item" title="${item}">
-                <i class="fa-regular fa-image"></i>
+                <i class="fa-solid fa-image"></i>
                 <span class="history-text">${item}</span>
             </li>
         `).join('');
@@ -47,13 +48,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- Core Generation Logic (Ultra-Stable Client-Side Synthesis) ---
+    // --- Core Generation Logic ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
 
         saveToHistory(text);
-        if (!currentChatId) createNewChat();
+        if (!currentChatId) currentChatId = Date.now().toString();
 
         chatInput.value = '';
         chatInput.style.height = 'auto';
@@ -77,37 +78,54 @@ document.addEventListener('DOMContentLoaded', () => {
             w = Math.floor(w * scale);
             h = Math.floor(h * scale);
 
-            // 2. 4K-Agent Prompt Enhancement (TACO Group Style)
+            // 2. 4K-Agent Synthesis Mode
             let finalPrompt = cleanPrompt;
             if (settings.model === '4k-agent') {
-                finalPrompt = `(4K-Agent Synthesis:1.2), ${cleanPrompt}, hyper-realistic, professional photograph, 8k resolution, sharp focus, cinematic textures, masterpiece`;
+                finalPrompt = `4K-Agent professional synthesis: ${cleanPrompt}. Ultra-high resolution, meticulously detailed, sharp focus, masterpiece, cinematic textures`;
             }
 
             // 3. Style Wrapping
-            if (settings.imageStyle === 'anime') finalPrompt = `vibrant anime style illustration of ${finalPrompt}. colorful, aesthetic`;
-            else if (settings.imageStyle === 'cinematic') finalPrompt = `cinematic 3D render of ${finalPrompt}. unreal engine 5, moody lighting`;
-            else if (settings.imageStyle === 'artistic') finalPrompt = `expressive oil painting of ${finalPrompt}. textured brushstrokes`;
+            if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime style, colorful, aesthetic art`;
+            else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render, unreal engine 5, moody lighting, detailed textures`;
+            else if (settings.imageStyle === 'artistic') finalPrompt += `, expressive oil painting, fine art style, textured brushstrokes`;
 
-            // 4. Direct Engine Call (Bypasses proxy for 100% stability)
+            // 4. Engine Synthesis (Bypassing proxy for reliability)
             const seed = Math.floor(Math.random() * 1000000);
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&model=flux&nologo=true&seed=${seed}`;
+            // Using the most basic and reliable Pollinations format
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&nologo=true&seed=${seed}`;
             
+            console.log("[Engine] Synthesizing image...");
             const img = new Image();
             img.crossOrigin = "anonymous";
-            img.src = imageUrl;
             
+            // Set a fallback timeout
+            const timeout = setTimeout(() => {
+                img.src = ""; // Stop loading
+                if (skeletonDiv && skeletonDiv.parentNode) {
+                    skeletonDiv.remove();
+                    appendMessage('bot', "The synthesis engine is currently overloaded. Please try again in a few seconds.");
+                    sendBtn.removeAttribute('disabled');
+                }
+            }, 30000);
+
             img.onload = () => {
-                if (skeletonDiv) skeletonDiv.remove();
-                const replyText = `**Prompt:** ${cleanPrompt}\n**Mode:** ${settings.model === '4k-agent' ? '4K-Agent (TACO)' : 'Standard'}`;
+                clearTimeout(timeout);
+                if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
+                const replyText = `**Prompt:** ${cleanPrompt}\n**Model:** ${settings.model === '4k-agent' ? '4K-Agent Synthesis' : 'Standard Flux'}`;
                 appendMessage('bot', replyText, false, new Date(), imageUrl);
-                showToast("Image ready!");
+                showToast("Synthesis successful!");
                 sendBtn.removeAttribute('disabled');
             };
+
             img.onerror = () => {
-                if (skeletonDiv) skeletonDiv.remove();
-                appendMessage('bot', "Engine synthesis failed. Please try a simpler prompt.");
+                clearTimeout(timeout);
+                if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
+                appendMessage('bot', "Synthesis failed. Please try a different prompt or style.");
                 sendBtn.removeAttribute('disabled');
             };
+
+            img.src = imageUrl;
+
         } catch (error) {
             console.error("Gen Error:", error);
             if (skeletonDiv) skeletonDiv.remove();
