@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveSettingsBtn.onclick = () => {
         localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
         settingsModal.style.display = 'none';
-        showToast("EvoLink Config Updated", "success");
+        showToast("CHANDRA x IMAGE Updated", "success");
     };
     window.onclick = (e) => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
 
@@ -178,61 +178,62 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHistory();
     }
 
-    // --- EvoLink AI Core ---
+    // --- CHANDRA x IMAGE Core ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         const currentAttachments = [...attachments];
         if (!text && currentAttachments.length === 0) return;
 
         saveToHistory(text);
-        chatInput.value = ''; 
-        chatInput.style.height = 'auto'; 
-        sendBtn.disabled = true;
-        welcomeScreen.style.display = 'none'; 
-        attachments = []; 
-        renderAttachmentPreviews();
+        chatInput.value = ''; chatInput.style.height = 'auto'; sendBtn.disabled = true;
+        welcomeScreen.style.display = 'none'; attachments = []; renderAttachmentPreviews();
 
         appendMessage('user', text, false, new Date(), null, currentAttachments);
         const botMsgDiv = appendMessage('bot', '', true); // Skeleton
         scrollBottom();
         
+        let finalPrompt = text;
         try {
-            // STEP 1: EvoLink Prompt Expansion (Text AI)
-            const expansionSystemPrompt = "You are the EvoLink AI Master Prompt Engineer. Expand the user's short description into a highly technical, professional Stable Diffusion prompt. Include lighting, composition, camera gear, and 32K resolution keywords. Return ONLY the expanded prompt string.";
+            // STEP 1: EvoLink Expansion (with Direct Fallback)
+            const expansionSystemPrompt = "You are CHANDRA x IMAGE Master Prompt Engineer. Expand the user description into a technical 32K prompt. Return ONLY the string.";
             
             const textResponse = await fetch('https://text.pollinations.ai/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    messages: [
-                        { role: 'system', content: expansionSystemPrompt },
-                        { role: 'user', content: text }
-                    ],
+                    messages: [{ role: 'system', content: expansionSystemPrompt }, { role: 'user', content: text }],
                     model: 'gpt-4o'
                 })
             });
             
-            if (!textResponse.ok) throw new Error("EvoLink Expansion Hub Busy");
-            let expandedPrompt = await textResponse.text();
-            expandedPrompt = expandedPrompt.trim() || text;
-
-            // STEP 2: Synthesis (Image AI)
-            const settings = loadSettings();
-            const qFactor = parseFloat(settings.quality || 4);
-            let w = 512 * qFactor, h = 512 * qFactor;
-            if (settings.aspectRatio === '16:9') { w = 1280 * (qFactor/4); h = 720 * (qFactor/4); }
-            else if (settings.aspectRatio === '9:16') { w = 720 * (qFactor/4); h = 1280 * (qFactor/4); }
-            
-            const MAX_RES = 2048;
-            if (w > MAX_RES || h > MAX_RES) { const r = Math.min(MAX_RES/w, MAX_RES/h); w=Math.floor(w*r); h=Math.floor(h*r); }
-
-            if (settings.connectionMode === 'cloud') {
-                await performCloudSynthesis(expandedPrompt, Math.floor(w), Math.floor(h), settings, botMsgDiv);
+            if (textResponse.ok) {
+                finalPrompt = await textResponse.text();
             } else {
-                await performA1111Synthesis(expandedPrompt, Math.floor(w), Math.floor(h), settings, botMsgDiv);
+                console.warn("Expansion Hub busy. Using direct synthesis.");
+                finalPrompt = `${text}, CHANDRA x IMAGE Style, 32K, ultra-detailed, photorealistic`;
+            }
+        } catch (e) {
+            finalPrompt = `${text}, CHANDRA x IMAGE Style, 32K, photorealistic`;
+        }
+
+        // STEP 2: Synthesis
+        const settings = loadSettings();
+        const qFactor = parseFloat(settings.quality || 4);
+        let w = 512 * qFactor, h = 512 * qFactor;
+        if (settings.aspectRatio === '16:9') { w = 1280 * (qFactor/4); h = 720 * (qFactor/4); }
+        else if (settings.aspectRatio === '9:16') { w = 720 * (qFactor/4); h = 1280 * (qFactor/4); }
+        
+        const MAX_RES = 2048;
+        if (w > MAX_RES || h > MAX_RES) { const r = Math.min(MAX_RES/w, MAX_RES/h); w=Math.floor(w*r); h=Math.floor(h*r); }
+
+        try {
+            if (settings.connectionMode === 'cloud') {
+                await performCloudSynthesis(finalPrompt, Math.floor(w), Math.floor(h), settings, botMsgDiv);
+            } else {
+                await performA1111Synthesis(finalPrompt, Math.floor(w), Math.floor(h), settings, botMsgDiv);
             }
         } catch (error) {
-            updateBotMessage(botMsgDiv, `EvoLink Engine Error: ${error.message}`);
+            updateBotMessage(botMsgDiv, `Synthesis Error: ${error.message}`);
             sendBtn.disabled = false;
         }
     }
@@ -244,19 +245,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.onload = () => {
-            updateBotMessage(botMsgDiv, `**EvoLink 32K Synthesis Success**\n\n**Expanded Prompt:** ${prompt}`, url);
+            updateBotMessage(botMsgDiv, `**CHANDRA x IMAGE 32K Success**\n\n**EvoLink Prompt:** ${prompt}`, url);
             sendBtn.disabled = false;
         };
         img.onerror = () => {
-            console.warn("Primary synthesis engine timeout. Switching to Turbo...");
             const turboUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=turbo`;
             const turboImg = new Image();
             turboImg.onload = () => {
-                updateBotMessage(botMsgDiv, `**EvoLink Turbo Fallback Success**\n\n**Expanded Prompt:** ${prompt}`, turboUrl);
+                updateBotMessage(botMsgDiv, `**CHANDRA x IMAGE Turbo Success**\n\n**EvoLink Prompt:** ${prompt}`, turboUrl);
                 sendBtn.disabled = false;
             };
             turboImg.onerror = () => {
-                updateBotMessage(botMsgDiv, "Synthesis failed. The EvoLink engine is under extreme load. Please try again in a few seconds.");
+                updateBotMessage(botMsgDiv, "Synthesis failed. Engine busy.");
                 sendBtn.disabled = false;
             }
             turboImg.src = turboUrl;
@@ -272,12 +272,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt, steps: parseInt(settings.steps), cfg_scale: parseFloat(settings.cfg), width: w, height: h })
             });
-            if (!res.ok) throw new Error("A1111 Node Offline");
             const data = await res.json();
-            updateBotMessage(botMsgDiv, `**EvoLink Local Synthesis Success**`, `data:image/png;base64,${data.images[0]}`);
+            updateBotMessage(botMsgDiv, `**CHANDRA x IMAGE Local Success**`, `data:image/png;base64,${data.images[0]}`);
             sendBtn.disabled = false;
         } catch(e) {
-            updateBotMessage(botMsgDiv, "Local A1111 connection failed. Ensure --cors-allow-origin=* is enabled.");
+            updateBotMessage(botMsgDiv, "Local Node Offline.");
             sendBtn.disabled = false;
         }
     }
@@ -285,14 +284,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
         const div = document.createElement('div'); div.className = `message ${sender}`;
         const avatar = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
-        const safeText = text || "";
-        const htmlContent = isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(safeText) : safeText);
+        const htmlContent = isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(text || "") : text || "");
 
         div.innerHTML = `
             <div class="msg-avatar ${sender}">${avatar}</div>
             <div class="msg-body">
                 <div class="message-header">
-                    <span class="msg-sender">${sender==='user'?'User':'EvoLink AI'}</span>
+                    <span class="msg-sender">${sender==='user'?'User':'CHANDRA x IMAGE'}</span>
                     <span class="message-time">${date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
                 </div>
                 <div class="msg-text">${htmlContent}</div>
@@ -305,19 +303,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const msgBody = div.querySelector('.msg-text');
         if (!msgBody) return;
         msgBody.innerHTML = typeof marked !== 'undefined' ? marked.parse(text) : text;
-        
         if (fileUrl) {
-            // Remove existing media if any
-            const existingMedia = div.querySelector('.message-media');
-            if (existingMedia) existingMedia.remove();
-
             const media = document.createElement('div'); media.className = 'message-media'; media.style.marginTop = '15px';
-            media.innerHTML = `
-                <img src="${fileUrl}" style="max-width:100%; border-radius:12px; box-shadow:var(--shadow-lg);">
-                <br>
-                <button onclick="downloadFromDOM(this)" class="send-btn" style="width:auto; padding:0 20px; margin-top:10px; font-size:0.8rem;">
-                    <i class="fa-solid fa-download"></i> Download
-                </button>`;
+            media.innerHTML = `<img src="${fileUrl}" style="max-width:100%; border-radius:12px; box-shadow:var(--shadow-lg);"><br><button onclick="downloadFromDOM(this)" class="send-btn" style="width:auto; padding:0 20px; margin-top:10px; font-size:0.8rem;"><i class="fa-solid fa-download"></i> Download</button>`;
             div.querySelector('.msg-body').appendChild(media);
         }
         scrollBottom();
@@ -328,7 +316,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!img) return;
         const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
         canvas.getContext('2d').drawImage(img, 0, 0);
-        canvas.toBlob(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `EvoLink-${Date.now()}.png`; a.click(); });
+        canvas.toBlob(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `CHANDRA-${Date.now()}.png`; a.click(); });
     };
 
     function showToast(msg, type = 'success') {
