@@ -236,8 +236,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (settings.aspectRatio === '16:9') { w = 1280; h = 720; }
         else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
         else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
+        
+        // Quality scaling
         w = Math.floor(w * parseFloat(settings.quality || 1));
         h = Math.floor(h * parseFloat(settings.quality || 1));
+
+        // CAP RESOLUTION: Most APIs (including Pollinations) have limits. 2048px is a safe max.
+        const MAX_RES = 2048;
+        if (w > MAX_RES || h > MAX_RES) {
+            const ratio = Math.min(MAX_RES / w, MAX_RES / h);
+            w = Math.floor(w * ratio);
+            h = Math.floor(h * ratio);
+        }
 
         let finalPrompt = `${cleanPrompt}, masterpiece, ultra-hd, 8k, photorealistic, sharp focus`;
         if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime illustration`;
@@ -256,22 +266,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function performCloudSynthesis(prompt, w, h, settings, skeleton) {
         const seed = Math.floor(Math.random() * 1000000);
-        const cloudUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
+        // Primary Model: Flux (High Quality)
+        const fluxUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
         
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-            if (skeleton && skeleton.parentNode) skeleton.remove();
-            appendMessage('bot', `**Synthesis Quality:** ${settings.quality}x | Steps: ${settings.steps}`, false, new Date(), cloudUrl);
-            scrollBottom();
-            sendBtn.removeAttribute('disabled');
+        const tryLoad = (url, isFallback = false) => {
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.onload = () => {
+                if (skeleton && skeleton.parentNode) skeleton.remove();
+                appendMessage('bot', `**Synthesis Success** ${isFallback ? '(Turbo Fallback)' : '(Flux Engine)'} | ${w}x${h}`, false, new Date(), url);
+                scrollBottom();
+                sendBtn.removeAttribute('disabled');
+            };
+            img.onerror = () => {
+                if (!isFallback) {
+                    console.log("Flux failed, trying Turbo fallback...");
+                    const turboUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=turbo`;
+                    tryLoad(turboUrl, true);
+                } else {
+                    if (skeleton && skeleton.parentNode) skeleton.remove();
+                    appendMessage('bot', "Synthesis engine is currently overloaded. Please try a different prompt or style.");
+                    sendBtn.removeAttribute('disabled');
+                }
+            };
+            img.src = url;
         };
-        img.onerror = () => { 
-            if (skeleton && skeleton.parentNode) skeleton.remove();
-            appendMessage('bot', "Synthesis engine timeout. Please try again.");
-            sendBtn.removeAttribute('disabled');
-        };
-        img.src = cloudUrl;
+
+        tryLoad(fluxUrl);
     }
 
     async function performA1111Synthesis(prompt, w, h, settings, skeleton) {
