@@ -444,7 +444,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 styleWrapper = `high quality image of ${cleanPrompt}. 4k resolution, clear, bright`;
             }
 
-            const imageUrl = `/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&width=1024&height=1024&model=flux&negative=${encodeURIComponent(negativePrompt)}&seed=${Math.floor(Math.random() * 1000000)}`;
+            // Detect aspect ratio from prompt (e.g., 16:9, 1:1)
+            const aspectMatch = prompt.match(/\b(1:1|16:9|9:16|4:3|3:4|21:9|4:5|5:4)\b/);
+            const aspect = aspectMatch ? aspectMatch[1] : '1:1';
+
+            // Detect resolution from prompt (2K, 4K) - triggers Nano Banana Pro
+            const resMatch = prompt.match(/\b(2K|4K)\b/i);
+            const resolution = resMatch ? resMatch[1].toUpperCase() : '';
+
+            const imageUrl = `/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}`;
             
             const img = new Image();
             img.src = imageUrl;

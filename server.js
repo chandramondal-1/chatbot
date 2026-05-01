@@ -65,27 +65,60 @@ app.post('/api/chat', async (req, res) => {
 // Proxy for Pollinations Image Generation (to hide Secret Key)
 app.get('/api/proxy/image', async (req, res) => {
     try {
-        const { prompt, width, height, model, negative, seed } = req.query;
-        // Pollinations.ai public API doesn't usually require a key in the query string.
-        // If you have a private/pro key, it's typically sent in headers or a different endpoint.
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width || 1024}&height=${height || 1024}&nologo=true&enhance=true&model=${model || 'flux'}&negative=${encodeURIComponent(negative || '')}&seed=${seed || Math.floor(Math.random() * 1000000)}`;
+        const { prompt, width, height, model, aspect_ratio, resolution } = req.query;
         
-        console.log("Fetching image from:", imageUrl);
-        const response = await fetch(imageUrl);
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Pollinations Error:", response.status, errorText);
-            return res.status(response.status).send(errorText);
+        const apiKey = process.env.GOOGLE_API_KEY;
+        if (!apiKey) {
+            return res.status(500).json({ error: "GOOGLE_API_KEY is missing in .env" });
         }
 
-        const buffer = await response.arrayBuffer();
-        const contentType = response.headers.get('content-type') || 'image/png';
-        
-        res.setHeader('Content-Type', contentType);
-        res.send(Buffer.from(buffer));
+        // Use Nano Banana models (Gemini 3.1)
+        // Default to Flash, switch to Pro if 2K/4K is requested
+        const apiModel = (resolution === '2K' || resolution === '4K') ? 'gemini-3-pro-image-preview' : 'gemini-3.1-flash-image-preview';
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent?key=${apiKey}`;
+
+        console.log(`Generating image with ${apiModel} (Nano Banana)...`);
+
+        const requestBody = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                imageConfig: {
+                    aspectRatio: aspect_ratio || "1:1"
+                }
+            }
+        };
+
+        // If resolution is 2K or 4K, Pro model expects imageSize
+        if (resolution && (resolution === '2K' || resolution === '4K')) {
+            requestBody.generationConfig.imageConfig.imageSize = resolution;
+        }
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            console.error("Gemini Image Error:", data);
+            return res.status(response.status).json(data);
+        }
+
+        // Gemini returns base64 in inlineData
+        const part = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+        if (!part) {
+            console.error("No image data returned from Gemini:", data);
+            return res.status(500).json({ error: "No image data returned from AI" });
+        }
+
+        const buffer = Buffer.from(part.inlineData.data, 'base64');
+        res.setHeader('Content-Type', part.inlineData.mimeType || 'image/png');
+        res.send(buffer);
+
     } catch (error) {
-        console.error("Image Proxy Error:", error);
+        console.error("Image Generation Error:", error);
         res.status(500).send("Error generating image: " + error.message);
     }
 });
