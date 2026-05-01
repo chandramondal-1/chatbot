@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageStyleSelect = document.getElementById('image-style-select');
     const aspectRatioSelect = document.getElementById('aspect-ratio-select');
     const resolutionSelect = document.getElementById('resolution-select');
+    const imageModelSelect = document.getElementById('image-model-select');
     const themeToggleBtn = document.getElementById('theme-toggle');
 
     // Sidebar Overlay for mobile
@@ -92,8 +93,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const aspect = settings.aspectRatio;
             const resolution = settings.resolution;
+            const model = settings.model;
 
-            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}`;
+            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}&model=${model}`;
             
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -191,7 +193,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return { 
             imageStyle: imageStyleSelect.value,
             aspectRatio: aspectRatioSelect.value,
-            resolution: resolutionSelect.value
+            resolution: resolutionSelect.value,
+            model: imageModelSelect.value
         };
     }
 
@@ -202,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Listeners ---
-    [imageStyleSelect, aspectRatioSelect, resolutionSelect].forEach(el => {
+    [imageStyleSelect, aspectRatioSelect, resolutionSelect, imageModelSelect].forEach(el => {
         el.addEventListener('change', () => {
             localStorage.setItem('ai_lab_settings', JSON.stringify(loadSettings()));
         });

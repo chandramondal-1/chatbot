@@ -13,7 +13,7 @@ app.use(express.static(path.join(__dirname, '/')));
 // Specialized Image Engine (Optimized for reliability and 4K quality)
 app.get('/api/proxy/image', async (req, res) => {
     try {
-        const { prompt, aspect_ratio, resolution } = req.query;
+        const { prompt, aspect_ratio, resolution, model } = req.query;
 
         console.log(`[Engine] Generating: "${prompt}" [${aspect_ratio}]`);
 
@@ -30,11 +30,17 @@ app.get('/api/proxy/image', async (req, res) => {
             height = Math.min(height * 1.5, 1920); 
         }
 
-        // LLM-driven prompt enhancement (4K-Agent TACO Group style)
-        const enhancedPrompt = `${prompt}. ultra-high resolution synthesis, 4K-Agent professional grade, meticulously detailed textures, masterpiece quality, sharp focus.`;
+        // Conditional Prompt Enhancement (4K-Agent TACO Group mode)
+        let finalPrompt = prompt;
+        if (model === '4k-agent') {
+            finalPrompt = `${prompt}. ultra-high resolution synthesis, 4K-Agent professional grade, meticulously detailed textures, masterpiece quality, sharp focus.`;
+            console.log("[Engine] Mode: 4K-Agent (LLM-Enhanced)");
+        } else {
+            console.log("[Engine] Mode: Standard Fast Diffusion");
+        }
 
         // The most reliable Pollinations URL structure
-        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}&enhance=true`;
+        const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${width}&height=${height}&model=flux&nologo=true&seed=${Math.floor(Math.random() * 1000000)}&enhance=${model === '4k-agent' ? 'true' : 'false'}`;
         
         const response = await fetch(pollinationsUrl);
         if (!response.ok) throw new Error(`API error: ${response.status}`);
