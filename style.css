@@ -548,3 +548,40 @@ input[type="range"] {
     margin: 8px 0;
     accent-color: var(--chandra-purple);
 }
+
+/* History Deletion Styles */
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 8px !important;
+}
+
+.history-content {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.history-delete {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    opacity: 0;
+}
+
+.history-item:hover .history-delete {
+    opacity: 1;
+}
+
+.history-delete:hover {
+    color: #ff4d4d;
+    background: rgba(255, 77, 77, 0.1);
+}

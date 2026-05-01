@@ -47,20 +47,31 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderHistory() {
         if (!historyList) return;
         const history = JSON.parse(localStorage.getItem('chandra_history')) || [];
-        historyList.innerHTML = history.map(item => `
+        historyList.innerHTML = history.map((item, index) => `
             <li class="history-item" title="${item}">
-                <i class="fa-solid fa-image"></i>
-                <span class="history-text">${item.length > 20 ? item.substring(0, 20) + '...' : item}</span>
+                <div class="history-content" onclick="loadHistoryItem('${item.replace(/'/g, "\\'")}')">
+                    <i class="fa-solid fa-image"></i>
+                    <span class="history-text">${item.length > 20 ? item.substring(0, 20) + '...' : item}</span>
+                </div>
+                <button class="history-delete" onclick="deleteHistoryItem(${index})">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
             </li>
         `).join('');
-
-        document.querySelectorAll('.history-item').forEach(li => {
-            li.onclick = () => {
-                chatInput.value = li.title;
-                sendMessage();
-            };
-        });
     }
+
+    window.loadHistoryItem = (prompt) => {
+        chatInput.value = prompt;
+        sendMessage();
+    };
+
+    window.deleteHistoryItem = (index) => {
+        let history = JSON.parse(localStorage.getItem('chandra_history')) || [];
+        history.splice(index, 1);
+        localStorage.setItem('chandra_history', JSON.stringify(history));
+        renderHistory();
+        showToast("Item deleted", "info");
+    };
 
     // --- Core Synthesis Engine (Cloud & Local Hub) ---
     async function sendMessage() {
