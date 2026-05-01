@@ -21,7 +21,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 // API Configuration
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname.includes('render.com')
     ? '' 
     : 'https://chatbot-1-dxrx.onrender.com'; // Linked to your Render backend!
 
