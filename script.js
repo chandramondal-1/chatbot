@@ -281,27 +281,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function performCloudSynthesis(prompt, w, h, settings, botMsgDiv) {
         const seed = Math.floor(Math.random() * 1000000);
-        const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-            updateBotMessage(botMsgDiv, `**CHANDRA x IMAGE 32K Success**\n\n**EvoLink Prompt:** ${prompt}`, url);
-            sendBtn.disabled = false;
-        };
-        img.onerror = () => {
-            const turboUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=turbo`;
-            const turboImg = new Image();
-            turboImg.onload = () => {
-                updateBotMessage(botMsgDiv, `**CHANDRA x IMAGE Turbo Success**\n\n**EvoLink Prompt:** ${prompt}`, turboUrl);
+        const models = ['flux', 'turbo', 'dreamshaper']; // Triple Fallback
+        
+        for (let i = 0; i < models.length; i++) {
+            const currentModel = models[i];
+            const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=${currentModel}`;
+            
+            try {
+                if (i > 0) updateBotStatus(botMsgDiv, `Retrying with ${currentModel} engine...`);
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+
+                const response = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                
+                updateBotMessage(botMsgDiv, `**CHANDRA x IMAGE 32K Success**\n\n**Engine:** ${currentModel.toUpperCase()}\n\n**EvoLink Prompt:** ${prompt}`, blobUrl);
                 sendBtn.disabled = false;
-            };
-            turboImg.onerror = () => {
-                updateBotMessage(botMsgDiv, "Synthesis failed. Engine busy.");
-                sendBtn.disabled = false;
+                return; // Success!
+            } catch (err) {
+                console.warn(`Model ${currentModel} failed:`, err);
+                if (i === models.length - 1) {
+                    updateBotMessage(botMsgDiv, "The synthesis engines are currently saturated. Please try a shorter prompt or wait 10 seconds.");
+                    sendBtn.disabled = false;
+                }
             }
-            turboImg.src = turboUrl;
-        };
-        img.src = url;
+        }
+    }
+
+    function updateBotStatus(div, statusText) {
+        const msgBody = div.querySelector('.msg-text');
+        if (msgBody) msgBody.innerHTML = `<div class="skeleton-line"></div><p style="font-size:0.8rem; opacity:0.7;">${statusText}</p>`;
     }
 
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
