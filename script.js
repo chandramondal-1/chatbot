@@ -253,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
         const div = document.createElement('div'); div.className = `message ${sender}`;
-        const avatar = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
+        const avatar = sender === 'user' ? 'U' : `<img src="assets/bot-logo.png" class="bot-avatar-img" onerror="this.outerHTML='<i class=\'fa-solid fa-wand-magic-sparkles\'></i>'">`;
         const safeText = text || "";
         const htmlContent = isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(safeText) : safeText);
 
