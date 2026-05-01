@@ -412,3 +412,70 @@ body {
     .suggestion-grid { grid-template-columns: 1fr; }
     .welcome-screen h1 { font-size: 1.8rem; }
 }
+
+/* --- Missing Sidebar Footer Styles --- */
+.sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.nav-btn {
+    width: 100%;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: var(--transition-pro);
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.nav-btn i {
+    font-size: 1rem;
+    width: 20px;
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    transform: translateX(4px);
+}
+
+/* Landing Page Specifics */
+.landing-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    background: radial-gradient(circle at center, rgba(10,10,10,0.8) 0%, #050505 100%);
+    backdrop-filter: blur(20px);
+    transition: opacity 0.8s ease;
+}
+
+.landing-card {
+    background: rgba(255, 255, 255, 0.03) !important;
+    backdrop-filter: blur(40px) saturate(150%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8), 0 0 100px rgba(124, 77, 255, 0.1) !important;
+}
+
+/* Fix for Welcome Screen visibility */
+.welcome-screen h1 {
+    font-size: 3rem !important;
+    line-height: 1.2;
+}
+
+.subtext {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+}

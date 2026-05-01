@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const userAvatar = document.getElementById('user-avatar');
     const userName = document.getElementById('user-name');
 
-    // Landing Hub Modal Elements
+    // Landing Hub Elements
     const tabLogin = document.getElementById('tab-login');
     const tabSignup = document.getElementById('tab-signup');
     const emailAuthForm = document.getElementById('email-auth-form');
@@ -28,7 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const authPassword = document.getElementById('auth-password');
     const emailSubmitBtn = document.getElementById('email-submit-btn');
     const googleAuthBtn = document.getElementById('google-auth-btn');
-    const phoneAuthBtn = document.getElementById('phone-auth-btn');
     const anonAuthBtn = document.getElementById('anon-auth-btn');
     const authSubtitle = document.getElementById('auth-subtitle');
 
@@ -39,13 +38,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveSettingsBtn = document.getElementById('save-settings-btn');
 
     const settingsEls = {
-        imageStyle: document.getElementById('image-style-select'),
-        aspectRatio: document.getElementById('aspect-ratio-select'),
+        style: document.getElementById('image-style-select'),
+        ratio: document.getElementById('aspect-ratio-select'),
         quality: document.getElementById('quality-select'),
         steps: document.getElementById('steps-slider'),
-        cfg: document.getElementById('cfg-slider'),
-        stepsVal: document.getElementById('steps-val'),
-        cfgVal: document.getElementById('cfg-val')
+        stepsVal: document.getElementById('steps-val')
     };
     
     const themeToggleBtn = document.getElementById('theme-toggle');
@@ -61,11 +58,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     let auth = null;
-    if (typeof firebase !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+    const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+    if (typeof firebase !== 'undefined' && isFirebaseConfigured) {
         try {
             firebase.initializeApp(firebaseConfig);
             auth = firebase.auth();
-        } catch (e) { console.warn("Firebase Init bypassed."); }
+        } catch (e) { console.warn("Firebase Init failed."); }
     }
 
     let currentUser = null;
@@ -80,18 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 landingScreen.style.display = 'none';
                 if (appContainer) {
                     appContainer.style.display = 'flex';
-                    appContainer.style.opacity = '0';
-                    setTimeout(() => appContainer.style.opacity = '1', 50);
+                    appContainer.style.opacity = '1';
                 }
-            }, 500);
+            }, 600);
         }
     }
 
     // --- Initialization ---
     function init() {
-        if (localStorage.getItem('chandra_theme') === 'light') {
-            document.body.classList.add('light-mode');
-        }
+        // Theme init
+        if (localStorage.getItem('chandra_theme') === 'light') document.body.classList.add('light-mode');
         
         renderHistory();
         
@@ -103,6 +99,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             updateUserUI(null);
+            // In local dev without Firebase, if we clicked Guest, we might want to auto-enter
+            if (localStorage.getItem('chandra_guest_entered') === 'true') enterApp();
         }
     }
 
@@ -124,14 +122,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Landing Hub Actions ---
+    // --- Actions ---
     if (tabLogin) tabLogin.onclick = () => { authMode = 'login'; tabLogin.classList.add('active'); tabSignup.classList.remove('active'); emailSubmitBtn.innerText = 'Login'; authSubtitle.innerText = 'Welcome back to the Laboratory'; };
     if (tabSignup) tabSignup.onclick = () => { authMode = 'signup'; tabSignup.classList.add('active'); tabLogin.classList.remove('active'); emailSubmitBtn.innerText = 'Create Account'; authSubtitle.innerText = 'Start your Extreme Synthesis journey'; };
 
     if (emailAuthForm) {
         emailAuthForm.onsubmit = async (e) => {
             e.preventDefault();
-            if (!auth) return showToast("Config Required", "error");
+            if (!auth) return showToast("Firebase Configuration Required", "error");
             try {
                 if (authMode === 'login') await auth.signInWithEmailAndPassword(authEmail.value, authPassword.value);
                 else await auth.createUserWithEmailAndPassword(authEmail.value, authPassword.value);
@@ -142,17 +140,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (googleAuthBtn) googleAuthBtn.onclick = () => { if (auth) auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => showToast(e.message, "error")); };
     
     if (anonAuthBtn) anonAuthBtn.onclick = () => { 
-        if (auth && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        if (auth) {
             auth.signInAnonymously().catch(e => showToast(e.message, "error"));
         } else {
-            showToast("Entering as Guest...", "success");
+            localStorage.setItem('chandra_guest_entered', 'true');
+            showToast("Entering Laboratory...", "success");
             enterApp(); 
         }
     };
 
-    if (logoutBtn) logoutBtn.onclick = () => { if (auth) auth.signOut().then(() => window.location.reload()); else window.location.reload(); };
+    if (logoutBtn) logoutBtn.onclick = () => { 
+        localStorage.removeItem('chandra_guest_entered');
+        if (auth) auth.signOut().then(() => window.location.reload()); 
+        else window.location.reload(); 
+    };
 
-    // --- Core Synthesis Logic ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
@@ -160,38 +162,23 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.value = ''; chatInput.style.height = 'auto'; sendBtn.disabled = true;
         if (welcomeScreen) welcomeScreen.style.display = 'none'; 
         appendMessage('user', text);
-        const botMsgDiv = appendMessage('bot', '', true); scrollBottom();
+        const botMsgDiv = appendMessage('bot', '', true); 
+        scrollBottom();
         
-        let finalPrompt = text;
         try {
-            const res = await fetch('https://text.pollinations.ai/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ messages: [{ role: 'system', content: "Expand into a technical 32K prompt." }, { role: 'user', content: text }], model: 'gpt-4o' })
-            });
-            if (res.ok) finalPrompt = await res.text();
-        } catch (e) { console.warn("EvoLink busy."); }
-
-        performCloudSynthesis(finalPrompt, botMsgDiv);
-    }
-
-    async function performCloudSynthesis(prompt, botMsgDiv) {
-        const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?nologo=true&model=flux`;
-        try {
-            const res = await fetch(url);
+            const promptUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(text)}?nologo=true&model=flux`;
+            const res = await fetch(promptUrl);
             if (!res.ok) throw new Error("Busy");
             const blob = await res.blob();
-            updateBotMessage(botMsgDiv, `**PRO SYNTHESIS COMPLETE**\n\n${prompt.substring(0, 100)}...`, URL.createObjectURL(blob));
-            sendBtn.disabled = false;
-        } catch (err) { updateBotMessage(botMsgDiv, "Engine saturated."); sendBtn.disabled = false; }
+            updateBotMessage(botMsgDiv, `**SYNTHESIS COMPLETE**\n\nPrompt: ${text}`, URL.createObjectURL(blob));
+        } catch (e) { updateBotMessage(botMsgDiv, "Engine saturated. Try again."); }
+        sendBtn.disabled = false;
     }
 
-    // --- UI Utilities ---
     function appendMessage(sender, text, isSkeleton = false) {
         const div = document.createElement('div'); div.className = `message ${sender}`;
-        const avatar = sender === 'user' ? 'U' : `<img src="assets/bot-logo.png" class="bot-avatar-img">`;
         const content = isSkeleton ? '<div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(text) : text);
-        div.innerHTML = `<div class="msg-avatar">${avatar}</div><div class="msg-body"><div class="msg-text">${content}</div></div>`;
+        div.innerHTML = `<div class="msg-avatar ${sender}">${sender==='user'?'U':'<img src="assets/bot-logo.png">'}</div><div class="msg-body"><div class="msg-text">${content}</div></div>`;
         if (messagesWrapper) messagesWrapper.appendChild(div); scrollBottom(); return div;
     }
 
@@ -200,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body.innerHTML = typeof marked !== 'undefined' ? marked.parse(text) : text;
         if (fileUrl) {
             const media = document.createElement('div'); media.className = 'message-media';
-            media.innerHTML = `<img src="${fileUrl}" style="max-width:100%; border-radius:12px; cursor:pointer;" onclick="window.open('${fileUrl}', '_blank')">`;
+            media.innerHTML = `<img src="${fileUrl}" style="max-width:100%; border-radius:12px; margin-top:10px;">`;
             div.querySelector('.msg-body').appendChild(media);
         }
         scrollBottom();
@@ -212,14 +199,9 @@ document.addEventListener('DOMContentLoaded', () => {
         historyList.innerHTML = history.map(item => `<li class="history-item"><span class="history-text">${item}</span></li>`).join('');
     }
 
-    function showToast(msg, type = 'success') {
-        const container = document.getElementById('toast-container'); if (!container) return;
-        const t = document.createElement('div'); t.className = `toast ${type}`; t.innerText = msg;
-        container.appendChild(t); setTimeout(() => t.remove(), 3000);
-    }
-
-    function scrollBottom() { if (chatContainer) chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' }); }
     function saveToHistory(p) { let h = JSON.parse(localStorage.getItem('chandra_history')) || []; h.unshift(p); localStorage.setItem('chandra_history', JSON.stringify(h.slice(0, 10))); renderHistory(); }
+    function scrollBottom() { if (chatContainer) chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' }); }
+    function showToast(msg, type = 'success') { const c = document.getElementById('toast-container'); if (!c) return; const t = document.createElement('div'); t.className = `toast ${type}`; t.innerText = msg; c.appendChild(t); setTimeout(() => t.remove(), 3000); }
 
     // --- Listeners ---
     if (newChatBtn) newChatBtn.onclick = () => { if (messagesWrapper) messagesWrapper.innerHTML = ''; if (welcomeScreen) welcomeScreen.style.display = 'flex'; };
