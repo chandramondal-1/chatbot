@@ -191,6 +191,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadHistoryItem(prompt) {
+        // Clear current session to focus on selected history
+        messagesWrapper.innerHTML = '';
+        welcomeScreen.style.display = 'none';
+        
         chatInput.value = prompt;
         if (window.innerWidth <= 768) { 
             sidebar.classList.remove('open'); 
