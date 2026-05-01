@@ -46,14 +46,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebarOverlay = document.getElementById('sidebar-overlay');
     const inputContainer = document.querySelector('.input-container');
     const toastContainer = document.getElementById('toast-container');
+    
+    // Advanced Settings Elements
     const imageStyleSelect = document.getElementById('image-style-select');
+    const aspectRatioSelect = document.getElementById('aspect-ratio-select');
+    const resolutionSelect = document.getElementById('resolution-select');
+    const imageModelSelect = document.getElementById('image-model-select');
     
     // Auth Elements
     const authBtn = document.getElementById('auth-btn');
     const authText = document.getElementById('auth-text');
     const historyList = document.getElementById('history-list');
-    const fileInput = document.getElementById('file-input');
-    const attachBtn = document.getElementById('attach-btn');
 
     // --- Authentication Logic ---
     onAuthStateChanged(auth, (user) => {
@@ -72,18 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     authBtn.addEventListener('click', async () => {
         if (currentUser) {
-            try {
-                await signOut(auth);
-            } catch (error) {
-                console.error("Error signing out:", error);
-            }
+            try { await signOut(auth); } catch (error) { console.error("Error signing out:", error); }
         } else {
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                console.error("Firebase Auth Error:", error.code, error.message);
-                alert("Authentication failed: " + error.message);
-            }
+            try { await signInWithPopup(auth, provider); } catch (error) { console.error("Firebase Auth Error:", error.message); }
         }
     });
 
@@ -153,14 +147,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function deleteChat(chatId) {
-        if (!confirm("Are you sure you want to delete this generation history?")) return;
+        if (!confirm("Delete this generation history?")) return;
         try {
             const chatRef = doc(db, 'users', currentUser.uid, 'chats', chatId);
             await deleteDoc(chatRef);
             if (currentChatId === chatId) resetUI();
-        } catch (error) {
-            console.error("Error deleting:", error);
-        }
+        } catch (error) { console.error("Error deleting:", error); }
     }
 
     function resetUI() {
@@ -171,23 +163,39 @@ document.addEventListener('DOMContentLoaded', () => {
         if (messageUnsubscribe) messageUnsubscribe();
     }
 
-    // --- Settings ---
+    // --- Settings Management ---
     function loadSettings() {
-        const settings = JSON.parse(localStorage.getItem('ai_lab_settings')) || { imageStyle: 'pro' };
-        if (imageStyleSelect) imageStyleSelect.value = settings.imageStyle;
+        const settings = JSON.parse(localStorage.getItem('ai_lab_settings')) || { 
+            imageStyle: 'pro',
+            aspectRatio: '1:1',
+            resolution: 'Standard',
+            model: 'flux'
+        };
+        if (imageStyleSelect) imageStyleSelect.value = settings.imageStyle || 'pro';
+        if (aspectRatioSelect) aspectRatioSelect.value = settings.aspectRatio || '1:1';
+        if (resolutionSelect) resolutionSelect.value = settings.resolution || 'Standard';
+        if (imageModelSelect) imageModelSelect.value = settings.model || 'flux';
         return settings;
     }
 
     function saveSettings() {
-        const settings = { imageStyle: imageStyleSelect.value };
+        const settings = {
+            imageStyle: imageStyleSelect.value,
+            aspectRatio: aspectRatioSelect.value,
+            resolution: resolutionSelect.value,
+            model: imageModelSelect.value
+        };
         localStorage.setItem('ai_lab_settings', JSON.stringify(settings));
-        showToast("Style updated!", "info");
+        showToast("Settings updated!", "info");
     }
 
-    if (imageStyleSelect) imageStyleSelect.addEventListener('change', saveSettings);
+    [imageStyleSelect, aspectRatioSelect, resolutionSelect, imageModelSelect].forEach(el => {
+        if (el) el.addEventListener('change', saveSettings);
+    });
+    
     loadSettings();
 
-    // --- Send Message ---
+    // --- Generation Logic ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
@@ -223,34 +231,41 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const settings = loadSettings();
             let cleanPrompt = prompt.replace(/generate an image of|draw a picture of|create/gi, '').trim();
+            
+            // Build style wrapper
             let styleWrapper = "";
             if (settings.imageStyle === 'pro') {
-                styleWrapper = `hyper-realistic 8K image of ${cleanPrompt}. ultra-detailed, photorealistic, cinematic lighting, masterpiece, 8k uhd`;
+                styleWrapper = `hyper-realistic 8K image of ${cleanPrompt}. ultra-detailed, photorealistic, cinematic lighting, masterpiece, sharp focus, 8k uhd`;
             } else if (settings.imageStyle === 'anime') {
-                styleWrapper = `vibrant anime style illustration of ${cleanPrompt}. high quality digital art, studio ghibli style, colorful, 4k`;
+                styleWrapper = `vibrant anime style illustration of ${cleanPrompt}. high quality digital art, studio ghibli style, colorful, aesthetic, 4k`;
             } else if (settings.imageStyle === 'cinematic') {
-                styleWrapper = `cinematic 3D render of ${cleanPrompt}. unreal engine 5, octane render, moody lighting, highly detailed, 8k`;
+                styleWrapper = `cinematic 3D render of ${cleanPrompt}. unreal engine 5, octane render, moody lighting, highly detailed, photorealistic, 8k`;
+            } else if (settings.imageStyle === 'artistic') {
+                styleWrapper = `expressive oil painting of ${cleanPrompt}. textured brushstrokes, fine art, rich colors, artistic masterpiece`;
             } else {
-                styleWrapper = `high quality image of ${cleanPrompt}. 4k resolution, clear`;
+                styleWrapper = `high quality image of ${cleanPrompt}. 4k resolution, clear and detailed`;
             }
-            const aspectMatch = prompt.match(/\b(1:1|16:9|9:16|4:3|3:4|21:9)\b/);
-            const aspect = aspectMatch ? aspectMatch[1] : '1:1';
-            const resMatch = prompt.match(/\b(2K|4K)\b/i);
-            const resolution = resMatch ? resMatch[1].toUpperCase() : '';
-            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}&model=flux`;
+
+            // Get parameters from settings
+            const aspect = settings.aspectRatio;
+            const resolution = settings.resolution;
+            const model = settings.model;
+
+            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}&model=${model}`;
+            
             const img = new Image();
             img.src = imageUrl;
             img.onload = async () => {
                 if (skeletonDiv) skeletonDiv.remove();
-                const replyText = `Here is the image I generated for: **${cleanPrompt}**`;
+                const replyText = `**Prompt:** ${cleanPrompt}\n**Style:** ${settings.imageStyle} | **Ratio:** ${aspect} | **Res:** ${resolution}`;
                 appendMessage('bot', replyText, false, new Date(), imageUrl, 'image/png');
                 await saveMessageToDB('bot', replyText, imageUrl, 'image/png');
-                showToast("Image generated!");
+                showToast("Image ready!");
                 sendBtn.removeAttribute('disabled');
             };
             img.onerror = () => {
                 if (skeletonDiv) skeletonDiv.remove();
-                appendMessage('bot', "Sorry, I couldn't generate that image.");
+                appendMessage('bot', "Generation failed. Please try a different prompt or setting.");
                 sendBtn.removeAttribute('disabled');
             };
         } catch (error) {
@@ -265,17 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const messagesRef = collection(db, 'users', currentUser.uid, 'chats', currentChatId, 'messages');
             await addDoc(messagesRef, {
-                sender: sender,
-                text: text,
-                fileUrl: fileUrl,
-                fileType: fileType,
-                timestamp: serverTimestamp()
+                sender: sender, text: text, fileUrl: fileUrl, fileType: fileType, timestamp: serverTimestamp()
             });
             const chatRef = doc(db, 'users', currentUser.uid, 'chats', currentChatId);
             await updateDoc(chatRef, { updatedAt: serverTimestamp() });
-        } catch (error) {
-            console.error("Error saving message:", error);
-        }
+        } catch (error) { console.error("Error saving message:", error); }
     }
 
     // --- UI Helpers ---
@@ -283,20 +292,27 @@ document.addEventListener('DOMContentLoaded', () => {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
         let avatarContent = sender === 'user' 
-            ? (currentUser && currentUser.photoURL ? `<img src="${currentUser.photoURL}" alt="User" style="width:100%; height:100%; border-radius:4px;">` : 'U')
+            ? (currentUser?.photoURL ? `<img src="${currentUser.photoURL}" alt="U" style="width:100%; height:100%; border-radius:4px;">` : 'U')
             : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
         const senderName = sender === 'user' ? (currentUser?.displayName?.split(' ')[0] || 'User') : '4K Agent';
         const timeStr = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...';
+        
         let mediaContent = '';
         if (fileUrl && fileType?.startsWith('image/')) {
             mediaContent = `
                 <div class="message-media" style="margin-top: 10px;">
-                    <img src="${fileUrl}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: var(--shadow-md); display: block;">
-                    <button onclick="window.open('${fileUrl}')" class="msg-action-btn" style="margin-top: 12px; background: var(--accent-gradient); color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer;">
-                        <i class="fa-solid fa-download"></i> Open Original
-                    </button>
+                    <img src="${fileUrl}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: block;">
+                    <div style="display:flex; gap:10px; margin-top:12px;">
+                        <button onclick="window.open('${fileUrl}')" class="msg-action-btn" style="background: var(--chandra-gradient); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; flex: 1;">
+                            <i class="fa-solid fa-expand"></i> View Full
+                        </button>
+                        <button onclick="downloadImage('${fileUrl}')" class="msg-action-btn" style="background: rgba(255,255,255,0.1); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                            <i class="fa-solid fa-download"></i>
+                        </button>
+                    </div>
                 </div>`;
         }
+
         messageDiv.innerHTML = `
             <div class="msg-avatar ${sender}">${avatarContent}</div>
             <div class="msg-body">
@@ -319,17 +335,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return typeof marked !== 'undefined' ? marked.parse(text) : text.replace(/\n/g, '<br>');
     }
 
-    function scrollToBottom() {
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
+    function scrollToBottom() { chatContainer.scrollTop = chatContainer.scrollHeight; }
 
     function showToast(message, type = "success") {
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${message}</span>`;
+        toast.innerHTML = `<i class="fa-solid fa-circle-check"></i><span>${message}</span>`;
         toastContainer.appendChild(toast);
         setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
     }
+
+    window.downloadImage = async (url) => {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `4k-agent-${Date.now()}.png`;
+        link.click();
+    };
 
     themeToggleBtn.addEventListener('click', () => {
         document.body.classList.toggle('light-mode');
@@ -349,7 +372,6 @@ document.addEventListener('DOMContentLoaded', () => {
     chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     sendBtn.addEventListener('click', sendMessage);
     
-    // Suggestion Cards
     document.querySelectorAll('.suggestion-card').forEach(card => {
         card.addEventListener('click', () => {
             chatInput.value = card.querySelector('p').innerText + " " + card.querySelector('.subtext').innerText;

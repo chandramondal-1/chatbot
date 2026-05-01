@@ -32,12 +32,44 @@
             </div>
 
             <div class="sidebar-section">
-                <div class="section-title">4K Agent Settings</div>
+                <div class="section-title">Generation Settings</div>
+                
                 <div class="setting-item">
+                    <label>Image Style</label>
                     <select id="image-style-select">
-                        <option value="pro">4K Agent Pro</option>
-                        <option value="anime">Anime Style</option>
-                        <option value="cinematic">Cinematic 3D</option>
+                        <option value="pro">4K Agent Pro (Realistic)</option>
+                        <option value="anime">Anime / Manga</option>
+                        <option value="cinematic">Cinematic / 3D</option>
+                        <option value="artistic">Artistic / Oil Painting</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label>Aspect Ratio</label>
+                    <select id="aspect-ratio-select">
+                        <option value="1:1">Square (1:1)</option>
+                        <option value="16:9">Widescreen (16:9)</option>
+                        <option value="9:16">Portrait (9:16)</option>
+                        <option value="4:3">Photo (4:3)</option>
+                        <option value="21:9">Ultra-Wide (21:9)</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label>Resolution</label>
+                    <select id="resolution-select">
+                        <option value="Standard">Standard (1K)</option>
+                        <option value="2K">High (2K)</option>
+                        <option value="4K">Ultra HD (4K Agent)</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
+                    <label>AI Model</label>
+                    <select id="image-model-select">
+                        <option value="flux">Flux (High Detail)</option>
+                        <option value="nanobanana-pro">Nano Banana Pro</option>
+                        <option value="seedream-pro">SeeDream Pro</option>
                     </select>
                 </div>
             </div>

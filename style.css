@@ -107,7 +107,14 @@ body {
 }
 
 .setting-item {
-    margin-bottom: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.setting-item label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
 }
 
 .setting-item select {
