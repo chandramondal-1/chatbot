@@ -302,9 +302,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fileUrl && fileType?.startsWith('image/')) {
             mediaContent = `
                 <div class="message-media" style="margin-top: 10px;">
-                    <img src="${fileUrl}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: block;">
+                    <img src="${fileUrl}" id="img-${Date.now()}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: block;" crossOrigin="anonymous">
                     <div style="display:flex; gap:10px; margin-top:12px;">
-                        <button onclick="downloadImage('${fileUrl}')" class="msg-action-btn" style="background: var(--chandra-gradient); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <button onclick="downloadFromDOM(this)" class="msg-action-btn" style="background: var(--chandra-gradient); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
                             <i class="fa-solid fa-download"></i> Download 4K Image
                         </button>
                     </div>
@@ -343,28 +343,32 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
     }
 
-    window.downloadImage = async (url) => {
+    window.downloadFromDOM = (btn) => {
         try {
-            showToast("Preparing download...", "info");
-            const response = await fetch(url);
-            if (!response.ok) throw new Error("Network response was not ok");
-            const blob = await response.blob();
+            const mediaDiv = btn.closest('.message-media');
+            const img = mediaDiv.querySelector('img');
+            if (!img) throw new Error("Image not found");
+
+            showToast("Processing high-res image...", "info");
             
-            // Verify it's actually an image
-            if (!blob.type.startsWith('image/')) {
-                throw new Error("Downloaded file is not a valid image. The generation might have failed.");
-            }
+            const canvas = document.createElement('canvas');
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
             
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `ChandraXImage-${Date.now()}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showToast("Download started!");
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `ChandraXImage-${Date.now()}.png`;
+                link.click();
+                URL.revokeObjectURL(url);
+                showToast("Download successful!");
+            }, 'image/png');
         } catch (error) {
-            console.error("Download failed:", error);
-            alert("Download failed: " + error.message);
+            console.error("DOM Download failed:", error);
+            showToast("Download failed. Please try again.", "error");
         }
     };
 
