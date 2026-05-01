@@ -72,71 +72,68 @@ app.post('/api/chat', async (req, res) => {
 // Proxy for Pollinations Image Generation (to hide Secret Key)
 app.get('/api/proxy/image', async (req, res) => {
     try {
-        const { prompt, aspect_ratio, resolution } = req.query;
+        const { prompt, aspect_ratio, resolution, model } = req.query;
         
-        const apiKey = process.env.OPENROUTER_API_KEY;
+        const apiKey = process.env.POLLINATIONS_API_KEY;
         if (!apiKey) {
-            return res.status(500).json({ error: "OPENROUTER_API_KEY is missing in .env" });
+            console.error("POLLINATIONS_API_KEY is missing");
+            return res.status(500).json({ error: "POLLINATIONS_API_KEY is missing in .env" });
         }
 
-        // Use 4KAgent (Nano Banana) models via OpenRouter
-        let apiModel = (resolution === '2K' || resolution === '4K') 
-            ? 'google/gemini-3-pro-image-preview' 
-            : 'google/gemini-3.1-flash-image-preview';
+        // Map aspect ratio to width/height for Pollinations
+        let width = 1024;
+        let height = 1024;
+
+        if (aspect_ratio === '16:9') { width = 1344; height = 768; }
+        else if (aspect_ratio === '9:16') { width = 768; height = 1344; }
+        else if (aspect_ratio === '4:3') { width = 1248; height = 936; }
+        else if (aspect_ratio === '3:4') { width = 936; height = 1248; }
+        else if (aspect_ratio === '21:9') { width = 1536; height = 640; }
+
+        // Boost resolution if 2K or 4K requested (Pollinations supports large sizes)
+        if (resolution === '4K') {
+            width = Math.min(width * 2, 2048); // Pollinations cap is around 2048
+            height = Math.min(height * 2, 2048);
+        } else if (resolution === '2K') {
+            width = Math.min(Math.round(width * 1.5), 2048);
+            height = Math.min(Math.round(height * 1.5), 2048);
+        }
+
+        // Determine model for Pollinations
+        // Default to 'flux' as it's the highest quality available currently
+        let pollinationsModel = 'flux'; 
         
-        if (req.query.model === 'flux-pro') {
-            apiModel = 'black-forest-labs/flux-pro-1.1';
+        // If Nano Banana is requested (via resolution or specific setting)
+        if (resolution === '4K' || resolution === '2K' || model === 'nanobanana-pro') {
+            pollinationsModel = 'nanobanana-pro';
+        } else if (model === 'flux-pro') {
+            pollinationsModel = 'flux';
         }
 
-        console.log(`Generating image with ${apiModel} (4K Agent via OpenRouter)...`);
+        const pollinationsUrl = `https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=${pollinationsModel}&seed=${Math.floor(Math.random() * 1000000)}&nologo=true&enhance=true`;
+        
+        console.log(`Generating image with ${pollinationsModel} via Pollinations...`);
 
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
+        const response = await fetch(pollinationsUrl, {
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://github.com/taco-group/4KAgent', // Reference to the 4KAgent project
-                'X-Title': '4K Agent Assistant'
-            },
-            body: JSON.stringify({
-                model: apiModel,
-                messages: [{ role: 'user', content: prompt }],
-                generation_config: {
-                    image_config: {
-                        aspect_ratio: aspect_ratio || "1:1",
-                        image_size: resolution || "1K"
-                    }
-                }
-            })
+                'Authorization': `Bearer ${apiKey}`
+            }
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            console.error("OpenRouter Image Error:", data);
-            return res.status(response.status).json(data);
+            const errorText = await response.text();
+            console.error("Pollinations Image Error:", response.status, errorText);
+            return res.status(response.status).send(errorText);
         }
 
-        // OpenRouter returns images in an array within the message object
-        const imageObj = data.choices?.[0]?.message?.images?.[0];
-        const imageUrl = imageObj?.image_url?.url || imageObj?.url;
-
-        if (!imageUrl) {
-            console.error("No image data found in OpenRouter response:", JSON.stringify(data));
-            return res.status(500).json({ error: "No image data returned from AI" });
-        }
-
-        // The URL is usually a data URL: data:image/png;base64,...
-        const base64Data = imageUrl.split(',')[1] || imageUrl;
-        const mimeTypeMatch = imageUrl.match(/^data:(image\/[a-z]+);base64,/);
-        const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/png';
-
-        const buffer = Buffer.from(base64Data, 'base64');
-        res.setHeader('Content-Type', mimeType);
-        res.send(buffer);
+        const buffer = await response.arrayBuffer();
+        const contentType = response.headers.get('content-type') || 'image/png';
+        
+        res.setHeader('Content-Type', contentType);
+        res.send(Buffer.from(buffer));
 
     } catch (error) {
-        console.error("4K Agent Error:", error);
+        console.error("Image Generation Error:", error);
         res.status(500).send("Error generating image: " + error.message);
     }
 });
@@ -173,6 +170,7 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    console.log(`API Keys loaded: ${process.env.NVIDIA_API_KEY ? 'Yes' : 'No'}`);
-    console.log(`Pollinations Key loaded: ${process.env.POLLINATIONS_API_KEY ? 'Yes' : 'No'}`);
+    console.log(`NVIDIA API Key: ${process.env.NVIDIA_API_KEY ? 'Loaded' : 'Missing'}`);
+    console.log(`Pollinations API Key: ${process.env.POLLINATIONS_API_KEY ? 'Loaded' : 'Missing'}`);
+    console.log(`OpenRouter API Key: ${process.env.OPENROUTER_API_KEY ? 'Loaded' : 'Missing'}`);
 });

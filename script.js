@@ -21,7 +21,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 // API Configuration
-const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname.includes('render.com')
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('render.com')
     ? '' 
     : 'https://chatbot-1-dxrx.onrender.com'; // Linked to your Render backend!
 
@@ -369,7 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isImageRequest && currentAppMode !== 'image') {
             skeletonDiv.remove();
             console.log("Auto-detected image request. Switching to 4K Agent logic...");
-            handleImageGeneration(userText);
+            const newSkeleton = appendMessage('bot', '', true);
+            handleImageGeneration(userText, newSkeleton);
             return;
         }
 
@@ -490,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
             img.src = imageUrl;
             
             img.onload = async () => {
-                skeletonDiv.remove();
+                if (skeletonDiv) skeletonDiv.remove();
                 const replyText = `Here is the image I generated for: **${cleanPrompt}**`;
                 appendMessage('bot', replyText, false, imageUrl, 'image/png');
                 await saveMessageToDB('bot', replyText, imageUrl, 'image/png');
@@ -505,7 +506,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error("Image Gen Error:", error);
-            skeletonDiv.remove();
+            if (skeletonDiv) skeletonDiv.remove();
             appendMessage('bot', "Sorry, I couldn't generate that image right now.");
             sendBtn.removeAttribute('disabled');
         }
