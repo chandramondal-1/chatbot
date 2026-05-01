@@ -371,7 +371,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
         const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
 
-        const modelType = isCoding ? 'deepseek' : 'nvidia';
+        // Determine model based on settings or auto-detection
+        let modelType = settings.textMode;
+        if (modelType === 'helpful') modelType = 'nvidia';
+        if (modelType === 'coder') modelType = 'deepseek';
+        
+        // Auto-switch to deepseek for coding if helpful mode is active
+        if (modelType === 'nvidia' && isCoding) modelType = 'deepseek';
 
         try {
             const response = await fetch('/api/chat', {
