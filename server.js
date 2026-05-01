@@ -66,16 +66,27 @@ app.post('/api/chat', async (req, res) => {
 app.get('/api/proxy/image', async (req, res) => {
     try {
         const { prompt, width, height, model, negative, seed } = req.query;
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width || 1024}&height=${height || 1024}&nologo=true&enhance=true&model=${model || 'flux'}&negative=${encodeURIComponent(negative || '')}&seed=${seed || Math.floor(Math.random() * 1000000)}&key=${process.env.POLLINATIONS_API_KEY}`;
+        // Pollinations.ai public API doesn't usually require a key in the query string.
+        // If you have a private/pro key, it's typically sent in headers or a different endpoint.
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width || 1024}&height=${height || 1024}&nologo=true&enhance=true&model=${model || 'flux'}&negative=${encodeURIComponent(negative || '')}&seed=${seed || Math.floor(Math.random() * 1000000)}`;
         
+        console.log("Fetching image from:", imageUrl);
         const response = await fetch(imageUrl);
-        const buffer = await response.arrayBuffer();
         
-        res.setHeader('Content-Type', 'image/png');
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Pollinations Error:", response.status, errorText);
+            return res.status(response.status).send(errorText);
+        }
+
+        const buffer = await response.arrayBuffer();
+        const contentType = response.headers.get('content-type') || 'image/png';
+        
+        res.setHeader('Content-Type', contentType);
         res.send(Buffer.from(buffer));
     } catch (error) {
         console.error("Image Proxy Error:", error);
-        res.status(500).send("Error generating image");
+        res.status(500).send("Error generating image: " + error.message);
     }
 });
 
@@ -83,16 +94,25 @@ app.get('/api/proxy/image', async (req, res) => {
 app.get('/api/proxy/audio', async (req, res) => {
     try {
         const { text, voice } = req.query;
-        const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(text)}?voice=${voice || 'nova'}&key=${process.env.POLLINATIONS_API_KEY}`;
+        const audioUrl = `https://gen.pollinations.ai/audio/${encodeURIComponent(text)}?voice=${voice || 'nova'}`;
         
+        console.log("Fetching audio from:", audioUrl);
         const response = await fetch(audioUrl);
-        const buffer = await response.arrayBuffer();
         
-        res.setHeader('Content-Type', 'audio/mpeg');
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Pollinations Audio Error:", response.status, errorText);
+            return res.status(response.status).send(errorText);
+        }
+
+        const buffer = await response.arrayBuffer();
+        const contentType = response.headers.get('content-type') || 'audio/mpeg';
+        
+        res.setHeader('Content-Type', contentType);
         res.send(Buffer.from(buffer));
     } catch (error) {
         console.error("Audio Proxy Error:", error);
-        res.status(500).send("Error generating audio");
+        res.status(500).send("Error generating audio: " + error.message);
     }
 });
 
