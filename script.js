@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeScreen.style.display = 'none';
 
         appendMessage('user', text);
-        await saveMessageToDB('user', text);
+        // saveMessageToDB removed for streamlining
 
         // Image Generation Flow
         const skeletonDiv = appendMessage('bot', '', true);
@@ -71,11 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
             img.crossOrigin = "anonymous";
             img.src = imageUrl;
             
-            img.onload = async () => {
+            img.onload = () => {
                 if (skeletonDiv) skeletonDiv.remove();
                 const replyText = `**Prompt:** ${cleanPrompt}\n**Style:** ${settings.imageStyle} | **Ratio:** ${aspect} | **Res:** ${resolution}`;
                 appendMessage('bot', replyText, false, new Date(), imageUrl, 'image/png');
-                await saveMessageToDB('bot', replyText, imageUrl, 'image/png');
                 showToast("Image ready!");
                 sendBtn.removeAttribute('disabled');
             };
