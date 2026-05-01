@@ -20,8 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const settingsEls = {
         imageStyle: document.getElementById('image-style-select'),
         aspectRatio: document.getElementById('aspect-ratio-select'),
-        connectionMode: document.getElementById('connection-mode'),
-        apiUrl: document.getElementById('api-url'),
         quality: document.getElementById('quality-select'),
         steps: document.getElementById('steps-slider'),
         cfg: document.getElementById('cfg-slider'),
@@ -50,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         updateSliderLabels();
-        toggleLocalSettings();
         renderHistory();
     }
 
@@ -67,11 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateSliderLabels() {
         if (settingsEls.stepsVal) settingsEls.stepsVal.innerText = settingsEls.steps.value;
         if (settingsEls.cfgVal) settingsEls.cfgVal.innerText = settingsEls.cfg.value;
-    }
-
-    function toggleLocalSettings() {
-        const localArea = document.getElementById('local-settings');
-        if (localArea) localArea.style.display = (settingsEls.connectionMode && settingsEls.connectionMode.value === 'cloud') ? 'none' : 'block';
     }
 
     function scrollBottom() {
@@ -209,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (textResponse.ok) {
                 finalPrompt = await textResponse.text();
             } else {
-                console.warn("Expansion Hub busy. Using direct synthesis.");
                 finalPrompt = `${text}, CHANDRA x IMAGE Style, 32K, ultra-detailed, photorealistic`;
             }
         } catch (e) {
@@ -227,11 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (w > MAX_RES || h > MAX_RES) { const r = Math.min(MAX_RES/w, MAX_RES/h); w=Math.floor(w*r); h=Math.floor(h*r); }
 
         try {
-            if (settings.connectionMode === 'cloud') {
-                await performCloudSynthesis(finalPrompt, Math.floor(w), Math.floor(h), settings, botMsgDiv);
-            } else {
-                await performA1111Synthesis(finalPrompt, Math.floor(w), Math.floor(h), settings, botMsgDiv);
-            }
+            await performCloudSynthesis(finalPrompt, Math.floor(w), Math.floor(h), settings, botMsgDiv);
         } catch (error) {
             updateBotMessage(botMsgDiv, `Synthesis Error: ${error.message}`);
             sendBtn.disabled = false;
@@ -264,27 +251,11 @@ document.addEventListener('DOMContentLoaded', () => {
         img.src = url;
     }
 
-    async function performA1111Synthesis(prompt, w, h, settings, botMsgDiv) {
-        const url = settings.apiUrl || "http://127.0.0.1:7860";
-        try {
-            const res = await fetch(`${url}/sdapi/v1/txt2img`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt, steps: parseInt(settings.steps), cfg_scale: parseFloat(settings.cfg), width: w, height: h })
-            });
-            const data = await res.json();
-            updateBotMessage(botMsgDiv, `**CHANDRA x IMAGE Local Success**`, `data:image/png;base64,${data.images[0]}`);
-            sendBtn.disabled = false;
-        } catch(e) {
-            updateBotMessage(botMsgDiv, "Local Node Offline.");
-            sendBtn.disabled = false;
-        }
-    }
-
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
         const div = document.createElement('div'); div.className = `message ${sender}`;
         const avatar = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
-        const htmlContent = isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(text || "") : text || "");
+        const safeText = text || "";
+        const htmlContent = isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(safeText) : safeText);
 
         div.innerHTML = `
             <div class="msg-avatar ${sender}">${avatar}</div>
@@ -332,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Listeners ---
-    Object.values(settingsEls).forEach(el => { if (el) el.onchange = () => { updateSliderLabels(); toggleLocalSettings(); }; });
+    Object.values(settingsEls).forEach(el => { if (el) el.onchange = () => { updateSliderLabels(); }; });
     if (settingsEls.steps) settingsEls.steps.oninput = updateSliderLabels;
     if (settingsEls.cfg) settingsEls.cfg.oninput = updateSliderLabels;
 
