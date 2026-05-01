@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("ChandraXImage 4K-Agent Synthesis Engine v2.1 Active");
     const chatInput = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-btn');
     const chatContainer = document.getElementById('chat-container');
@@ -22,8 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- History Logic ---
     function saveToHistory(prompt) {
         let history = JSON.parse(localStorage.getItem('chandra_history')) || [];
-        if (!history.includes(prompt)) {
-            history.unshift(prompt);
+        const cleanItem = prompt.trim();
+        if (!history.includes(cleanItem)) {
+            history.unshift(cleanItem);
             if (history.length > 20) history.pop();
             localStorage.setItem('chandra_history', JSON.stringify(history));
             renderHistory();
@@ -36,19 +36,19 @@ document.addEventListener('DOMContentLoaded', () => {
         historyList.innerHTML = history.map(item => `
             <li class="history-item" title="${item}">
                 <i class="fa-solid fa-image"></i>
-                <span class="history-text">${item}</span>
+                <span class="history-text">${item.length > 20 ? item.substring(0, 20) + '...' : item}</span>
             </li>
         `).join('');
 
         document.querySelectorAll('.history-item').forEach(li => {
             li.onclick = () => {
-                chatInput.value = li.querySelector('.history-text').innerText;
+                chatInput.value = li.title;
                 sendMessage();
             };
         });
     }
 
-    // --- Core Generation Logic ---
+    // --- Core Generation Logic (Pro-Grade Stability) ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
@@ -64,73 +64,74 @@ document.addEventListener('DOMContentLoaded', () => {
         appendMessage('user', text);
         const skeletonDiv = appendMessage('bot', '', true);
         
-        try {
-            const settings = loadSettings();
-            const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim();
+        const settings = loadSettings();
+        const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim();
 
-            // 1. Resolution Mapping
-            let w = 1024, h = 1024;
-            if (settings.aspectRatio === '16:9') { w = 1280; h = 720; }
-            else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
-            else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
+        // Synthesis Parameters
+        let w = 1024, h = 1024;
+        if (settings.aspectRatio === '16:9') { w = 1280; h = 720; }
+        else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
+        else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
 
-            const scale = settings.resolution === '4K' ? 1.5 : 1.0;
-            w = Math.floor(w * scale);
-            h = Math.floor(h * scale);
+        const scale = settings.resolution === '4K' ? 1.5 : 1.0;
+        w = Math.floor(w * scale);
+        h = Math.floor(h * scale);
 
-            // 2. 4K-Agent Synthesis Mode
-            let finalPrompt = cleanPrompt;
-            if (settings.model === '4k-agent') {
-                finalPrompt = `4K-Agent professional synthesis: ${cleanPrompt}. Ultra-high resolution, meticulously detailed, sharp focus, masterpiece, cinematic textures`;
-            }
+        let finalPrompt = cleanPrompt;
+        if (settings.model === '4k-agent') {
+            finalPrompt = `4K-Agent professional synthesis: ${cleanPrompt}. Ultra-high resolution, masterpiece, detailed textures, sharp focus`;
+        }
 
-            // 3. Style Wrapping
-            if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime style, colorful, aesthetic art`;
-            else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render, unreal engine 5, moody lighting, detailed textures`;
-            else if (settings.imageStyle === 'artistic') finalPrompt += `, expressive oil painting, fine art style, textured brushstrokes`;
+        if (settings.imageStyle === 'anime') finalPrompt += `, anime style, colorful`;
+        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic render, highly detailed`;
+        else if (settings.imageStyle === 'artistic') finalPrompt += `, artistic oil painting style`;
 
-            // 4. Engine Synthesis (Bypassing proxy for reliability)
+        let retries = 0;
+        const maxRetries = 2;
+
+        const attemptSynthesis = () => {
             const seed = Math.floor(Math.random() * 1000000);
-            // Using the most basic and reliable Pollinations format
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&nologo=true&seed=${seed}`;
+            // Use the most stable URL format available
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
             
-            console.log("[Engine] Synthesizing image...");
             const img = new Image();
             img.crossOrigin = "anonymous";
             
-            // Set a fallback timeout
             const timeout = setTimeout(() => {
-                img.src = ""; // Stop loading
-                if (skeletonDiv && skeletonDiv.parentNode) {
-                    skeletonDiv.remove();
-                    appendMessage('bot', "The synthesis engine is currently overloaded. Please try again in a few seconds.");
-                    sendBtn.removeAttribute('disabled');
-                }
-            }, 30000);
+                img.src = "";
+                handleFailure();
+            }, 40000); // 40s timeout for high-res
 
             img.onload = () => {
                 clearTimeout(timeout);
                 if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                const replyText = `**Prompt:** ${cleanPrompt}\n**Model:** ${settings.model === '4k-agent' ? '4K-Agent Synthesis' : 'Standard Flux'}`;
+                const replyText = `**Prompt:** ${cleanPrompt}\n**Status:** Synthesis Successful (4K-Agent)`;
                 appendMessage('bot', replyText, false, new Date(), imageUrl);
-                showToast("Synthesis successful!");
+                showToast("Synthesis ready!");
                 sendBtn.removeAttribute('disabled');
             };
 
             img.onerror = () => {
                 clearTimeout(timeout);
-                if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                appendMessage('bot', "Synthesis failed. Please try a different prompt or style.");
-                sendBtn.removeAttribute('disabled');
+                handleFailure();
             };
 
             img.src = imageUrl;
+        };
 
-        } catch (error) {
-            console.error("Gen Error:", error);
-            if (skeletonDiv) skeletonDiv.remove();
-            sendBtn.removeAttribute('disabled');
-        }
+        const handleFailure = () => {
+            if (retries < maxRetries) {
+                retries++;
+                console.warn(`Synthesis retry ${retries}/${maxRetries}...`);
+                attemptSynthesis();
+            } else {
+                if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
+                appendMessage('bot', "The synthesis engine is currently under high load. Please try a different prompt or wait a moment.");
+                sendBtn.removeAttribute('disabled');
+            }
+        };
+
+        attemptSynthesis();
     }
 
     // --- UI Helpers ---
@@ -187,7 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 link.download = `ChandraXImage-${Date.now()}.png`;
                 link.click();
             }, 'image/png');
-            showToast("Download started!");
         } catch (e) {
             showToast("Download failed", "error");
         }
@@ -211,9 +211,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function createNewChat() {
-        currentChatId = Date.now().toString();
         messagesWrapper.innerHTML = '';
         welcomeScreen.style.display = 'flex';
+        currentChatId = Date.now().toString();
     }
 
     // --- Listeners ---
