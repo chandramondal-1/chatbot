@@ -19,7 +19,10 @@ app.post('/api/chat', async (req, res) => {
 
         let apiUrl = "https://integrate.api.nvidia.com/v1/chat/completions";
         let apiKey = process.env.NVIDIA_API_KEY;
-        let apiModel = model || "nvidia/llama-3.1-8b-instruct";
+        // Default to a specific valid NVIDIA model name
+        let apiModel = (model === "nvidia" || !model) ? "meta/llama-3.1-8b-instruct" : model;
+
+        console.log(`Processing chat request with model: ${apiModel}`);
 
         if (model === 'deepseek') {
             apiUrl = 'https://api.deepseek.com/chat/completions';

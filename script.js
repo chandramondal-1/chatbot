@@ -631,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 avatarContent = 'U';
             }
-            senderName = currentUser ? currentUser.displayName.split(' ')[0] : 'You';
+            senderName = (currentUser && currentUser.displayName) ? currentUser.displayName.split(' ')[0] : 'User';
         } else {
             avatarContent = '<i class="fa-solid fa-robot"></i>';
             senderName = 'Chandra AI';
