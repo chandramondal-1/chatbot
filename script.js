@@ -404,11 +404,19 @@ document.addEventListener('DOMContentLoaded', () => {
             skeletonDiv.remove();
             await saveMessageToDB('bot', replyText);
         } catch (error) {
-            console.error("API Error:", error);
+            console.error("AI Error:", error);
             skeletonDiv.remove();
-            appendMessage('bot', "Sorry, I'm having trouble connecting to the AI service. Please check your connection.");
+            
+            let errorMsg = "Sorry, I'm having trouble connecting to the AI server.";
+            if (window.location.hostname.includes('github.io')) {
+                errorMsg = "<strong>Backend Connection Error:</strong> You are on GitHub Pages, which doesn't support running the backend (server.js). Please host your backend on Render or Railway and update the API URL in script.js.";
+            } else {
+                errorMsg = `Error: ${error.message}. Make sure your local server is running on port 3000.`;
+            }
+            
+            appendMessage('bot', errorMsg);
+            sendBtn.removeAttribute('disabled');
         }
-        sendBtn.removeAttribute('disabled');
         scrollToBottom();
     }
 
