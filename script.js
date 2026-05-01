@@ -23,7 +23,7 @@ const firebaseConfig = {
 // API Configuration
 const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
     ? '' 
-    : 'https://YOUR-RENDER-URL.onrender.com'; // REPLACE THIS after deploying to Render
+    : 'https://chatbot-1-dxrx.onrender.com'; // Linked to your Render backend!
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
