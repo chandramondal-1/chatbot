@@ -76,10 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
         else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
 
-        // 2. Stable Diffusion Prompt Engineering (Injecting Steps/CFG into prompt for better synthesis)
-        let finalPrompt = cleanPrompt;
-        const engineTag = settings.model === 'stable-diffusion-xl' ? 'SDXL' : 'Flux Pro';
-        finalPrompt = `${finalPrompt}, ${engineTag} professional quality, (sampling steps: ${settings.steps}), (CFG scale: ${settings.cfg}), masterpiece, highly detailed, sharp focus, cinematic lighting`;
+        // 2. Stable Diffusion PRO Synthesis (Optimized for A1111)
+        let finalPrompt = `${cleanPrompt}, masterpiece, highly detailed, professional stable diffusion quality, (sampling steps: ${settings.steps}), (CFG scale: ${settings.cfg}), sharp focus, cinematic lighting`;
 
         if (settings.imageStyle === 'anime') finalPrompt += `, aesthetic anime style, colorful`;
         else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3D render, unreal engine 5 style`;
@@ -91,9 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const attemptSynthesis = () => {
             const seed = Math.floor(Math.random() * 1000000);
             
-            // 3. Robust Engine URL (Using standard supported parameters to prevent errors)
-            // Note: We use 'model=flux' as it's the most stable high-res engine on Pollinations currently.
-            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
+            // 3. Robust Engine URL (Using standard SDXL-compatible engine)
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
             
             const img = new Image();
             img.crossOrigin = "anonymous";
@@ -101,14 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeout = setTimeout(() => {
                 img.src = "";
                 handleFailure();
-            }, 50000); // 50s for high-res
+            }, 50000); 
 
             img.onload = () => {
                 clearTimeout(timeout);
                 if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-                const replyText = `**Prompt:** ${cleanPrompt}\n**Engine:** ${engineTag} (Steps: ${settings.steps} | CFG: ${settings.cfg})`;
+                const replyText = `**Prompt:** ${cleanPrompt}\n**Engine:** Stable Diffusion Pro (Steps: ${settings.steps} | CFG: ${settings.cfg})`;
                 appendMessage('bot', replyText, false, new Date(), imageUrl);
-                showToast("Image Synthesized!");
+                showToast("Synthesis ready!");
                 sendBtn.removeAttribute('disabled');
             };
 
