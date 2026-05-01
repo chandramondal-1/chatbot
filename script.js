@@ -27,11 +27,41 @@ document.addEventListener('DOMContentLoaded', () => {
         ? '' 
         : 'https://chatbot-1-dxrx.onrender.com';
 
+    // --- History Logic (Local Storage) ---
+    function saveToHistory(prompt) {
+        let history = JSON.parse(localStorage.getItem('chandra_history')) || [];
+        if (!history.includes(prompt)) {
+            history.unshift(prompt);
+            if (history.length > 20) history.pop();
+            localStorage.setItem('chandra_history', JSON.stringify(history));
+            renderHistory();
+        }
+    }
+
+    function renderHistory() {
+        if (!historyList) return;
+        const history = JSON.parse(localStorage.getItem('chandra_history')) || [];
+        historyList.innerHTML = history.map(item => `
+            <li class="history-item" title="${item}">
+                <i class="fa-regular fa-image"></i>
+                <span class="history-text">${item}</span>
+            </li>
+        `).join('');
+
+        document.querySelectorAll('.history-item').forEach(li => {
+            li.addEventListener('click', () => {
+                chatInput.value = li.querySelector('.history-text').innerText;
+                sendMessage();
+            });
+        });
+    }
+
     // --- Core Generation Logic ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         if (!text) return;
 
+        saveToHistory(text);
         if (!currentChatId) createNewChat();
 
         chatInput.value = '';
@@ -40,8 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeScreen.style.display = 'none';
 
         appendMessage('user', text);
-        // saveMessageToDB removed for streamlining
-
         // Image Generation Flow
         const skeletonDiv = appendMessage('bot', '', true);
         
@@ -186,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     mobileMenuBtn.addEventListener('click', () => { sidebar.classList.toggle('open'); });
     newChatBtn.addEventListener('click', createNewChat);
+    renderHistory();
     chatInput.addEventListener('input', function() {
         this.style.height = 'auto';
         this.style.height = this.scrollHeight + 'px';
