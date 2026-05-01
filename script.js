@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', () => {
         aspectRatio: document.getElementById('aspect-ratio-select'),
         connectionMode: document.getElementById('connection-mode'),
         apiUrl: document.getElementById('api-url'),
-        imageModel: document.getElementById('image-model-select'),
         quality: document.getElementById('quality-select'),
         steps: document.getElementById('steps-slider'),
         cfg: document.getElementById('cfg-slider'),
@@ -61,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveSettingsBtn.onclick = () => {
         localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
         settingsModal.style.display = 'none';
-        showToast("Settings Saved", "success");
+        showToast("EvoLink Config Saved", "success");
     };
     window.onclick = (e) => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
 
@@ -86,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.onchange = (e) => {
         const files = Array.from(e.target.files);
         files.forEach(file => {
-            if (attachments.length >= 5) return showToast("Max 5 files allowed", "error");
+            if (attachments.length >= 5) return showToast("Max 5 files", "error");
             const reader = new FileReader();
             reader.onload = (re) => {
                 attachments.push({
@@ -99,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderAttachmentPreviews();
                 sendBtn.disabled = false;
             };
-            if (file.type.startsWith('image/') || file.type.startsWith('audio/') || file.type.startsWith('video/')) reader.readAsDataURL(file);
+            if (file.type.startsWith('image/')) reader.readAsDataURL(file);
             else reader.readAsText(file.slice(0, 100));
         });
         fileInput.value = '';
@@ -108,39 +107,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderAttachmentPreviews() {
         attachmentPreview.innerHTML = attachments.map(att => `
             <div class="preview-pill">
-                ${att.type.startsWith('image/') ? `
-                    <img src="${att.data}">
-                    <i class="fa-solid fa-wand-sparkles interrogate-btn" title="Interrogate (EvoLink AI)" onclick="interrogateImage(${att.id})"></i>
-                ` : `<i class="fa-solid fa-file"></i>`}
-                <span title="${att.name}">${att.name.length > 10 ? att.name.substring(0, 10) + '...' : att.name}</span>
-                <i class="fa-solid fa-xmark remove-attachment" onclick="removeAttachment(${att.id})"></i>
+                ${att.type.startsWith('image/') ? `<img src="${att.data}">` : `<i class="fa-solid fa-file"></i>`}
+                <span>${att.name.length > 10 ? att.name.substring(0, 10) + '...' : att.name}</span>
+                <i class="fa-solid fa-xmark" onclick="removeAttachment(${att.id})"></i>
             </div>
         `).join('');
     }
-
-    window.interrogateImage = async (id) => {
-        const att = attachments.find(a => a.id === id);
-        if (!att || !att.data) return;
-        showToast("Analyzing (EvoLink)...", "info");
-        try {
-            const res = await fetch('https://text.pollinations.ai/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    messages: [
-                        { role: 'system', content: "Expert prompt engineer. Return ONLY a Stable Diffusion prompt for this image." },
-                        { role: 'user', content: [{ type: 'text', text: "Describe this image." }, { type: 'image_url', image_url: { url: att.data } }]}
-                    ],
-                    model: 'gpt-4o'
-                })
-            });
-            const pText = await res.text();
-            chatInput.value = pText.trim();
-            chatInput.style.height = 'auto'; chatInput.style.height = chatInput.scrollHeight + 'px';
-            sendBtn.disabled = false;
-            showToast("Prompt Extracted!", "success");
-        } catch (e) { showToast("Vision busy", "error"); }
-    };
 
     window.removeAttachment = (id) => {
         attachments = attachments.filter(att => att.id !== id);
@@ -152,9 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveToHistory(prompt) {
         if (!prompt || prompt.trim() === '') return;
         let history = JSON.parse(localStorage.getItem('chandra_history')) || [];
-        const entry = prompt.trim();
-        if (!history.includes(entry)) {
-            history.unshift(entry);
+        if (!history.includes(prompt.trim())) {
+            history.unshift(prompt.trim());
             if (history.length > 20) history.pop();
             localStorage.setItem('chandra_history', JSON.stringify(history));
             renderHistory();
@@ -170,13 +141,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <i class="fa-solid fa-image"></i>
                     <span class="history-text">${item}</span>
                 </div>
-                <button class="history-delete" data-index="${index}">
-                    <i class="fa-solid fa-trash-can"></i>
-                </button>
+                <button class="history-delete" data-index="${index}"><i class="fa-solid fa-trash-can"></i></button>
             </li>
         `).join('');
 
-        // Add Listeners
         document.querySelectorAll('.history-content').forEach(el => {
             el.onclick = () => {
                 const prompt = decodeURIComponent(el.closest('.history-item').dataset.prompt);
@@ -208,10 +176,9 @@ document.addEventListener('DOMContentLoaded', () => {
         history.splice(index, 1);
         localStorage.setItem('chandra_history', JSON.stringify(history));
         renderHistory();
-        showToast("Item removed", "info");
     }
 
-    // --- Core Synthesis ---
+    // --- EvoLink AI Core ---
     async function sendMessage() {
         const text = chatInput.value.trim();
         const currentAttachments = [...attachments];
@@ -226,77 +193,70 @@ document.addEventListener('DOMContentLoaded', () => {
         renderAttachmentPreviews();
 
         appendMessage('user', text, false, new Date(), null, currentAttachments);
-        const skeletonDiv = appendMessage('bot', '', true);
+        const botMsgDiv = appendMessage('bot', '', true); // Skeleton
         scrollBottom();
         
-        const settings = loadSettings();
-        const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim() || "Synthesis";
-
-        // Resolution Base Scaling (Mini 4K, Max 32K)
-        // We use 512 as base, so Quality 4 = 2048 (4K), Quality 32 = 16384 (16K scaling)
-        // Note: Real 32K is 30720px, but we cap at 2048 for API stability and use prompt-upscaling.
-        const qFactor = parseFloat(settings.quality || 4);
-        let w = 512 * qFactor, h = 512 * qFactor;
-
-        if (settings.aspectRatio === '16:9') { w = 1280 * (qFactor/4); h = 720 * (qFactor/4); }
-        else if (settings.aspectRatio === '9:16') { w = 720 * (qFactor/4); h = 1280 * (qFactor/4); }
-        else if (settings.aspectRatio === '21:9') { w = 1440 * (qFactor/4); h = 612 * (qFactor/4); }
-
-        const MAX_RES = 2048;
-        if (w > MAX_RES || h > MAX_RES) {
-            const ratio = Math.min(MAX_RES / w, MAX_RES / h);
-            w = Math.floor(w * ratio);
-            h = Math.floor(h * ratio);
-        }
-
-        // EvoLink AI Professional Prompt Injection
-        let finalPrompt = `${cleanPrompt}, EvoLink AI Style, ${qFactor}K resolution, extreme detail, masterpiece, 32k ultra-hd, hyper-photorealistic, volumetric lighting, ray tracing, sharp focus, 8k textures`;
-        if (settings.imageStyle === 'anime') finalPrompt += `, high-end anime aesthetic, sharp lines, vibrant colors`;
-        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic film look, anamorphic lens flares, unreal engine 5.4`;
-        else if (settings.imageStyle === 'artistic') finalPrompt += `, professional oil painting, thick brushstrokes, museum quality`;
-
         try {
-            if (settings.mode === 'cloud') await performCloudSynthesis(finalPrompt, w, h, settings, skeletonDiv);
-            else if (settings.mode === 'a1111') await performA1111Synthesis(finalPrompt, w, h, settings, skeletonDiv);
+            // STEP 1: EvoLink Prompt Expansion (Text AI)
+            const expansionSystemPrompt = "You are the EvoLink AI Master Prompt Engineer. Expand the user's short description into a highly technical, professional Stable Diffusion prompt. Include lighting, composition, camera gear, and 32K resolution keywords. Return ONLY the expanded prompt.";
+            
+            const textResponse = await fetch('https://text.pollinations.ai/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: [
+                        { role: 'system', content: expansionSystemPrompt },
+                        { role: 'user', content: text }
+                    ],
+                    model: 'gpt-4o'
+                })
+            });
+            const expandedPrompt = await textResponse.text();
+
+            // STEP 2: Synthesis (Image AI)
+            const settings = loadSettings();
+            const qFactor = parseFloat(settings.quality || 4);
+            let w = 512 * qFactor, h = 512 * qFactor;
+            if (settings.aspectRatio === '16:9') { w = 1280 * (qFactor/4); h = 720 * (qFactor/4); }
+            else if (settings.aspectRatio === '9:16') { w = 720 * (qFactor/4); h = 1280 * (qFactor/4); }
+            const MAX_RES = 2048;
+            if (w > MAX_RES || h > MAX_RES) { const r = Math.min(MAX_RES/w, MAX_RES/h); w=Math.floor(w*r); h=Math.floor(h*r); }
+
+            if (settings.mode === 'cloud') {
+                await performCloudSynthesis(expandedPrompt, w, h, settings, botMsgDiv);
+            } else {
+                await performA1111Synthesis(expandedPrompt, w, h, settings, botMsgDiv);
+            }
         } catch (error) {
-            if (skeletonDiv) skeletonDiv.remove();
-            appendMessage('bot', `Engine Error: ${error.message}`);
-            sendBtn.removeAttribute('disabled');
+            updateBotMessage(botMsgDiv, `EvoLink Engine Error: ${error.message}`);
+            sendBtn.disabled = false;
         }
     }
 
-    async function performCloudSynthesis(prompt, w, h, settings, skeleton) {
+    async function performCloudSynthesis(prompt, w, h, settings, botMsgDiv) {
         const seed = Math.floor(Math.random() * 1000000);
-        // Primary Model: Flux (High Quality)
-        const fluxUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
+        const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
         
-        const tryLoad = (url, isFallback = false) => {
-            const img = new Image();
-            img.crossOrigin = "anonymous";
-            img.onload = () => {
-                if (skeleton && skeleton.parentNode) skeleton.remove();
-                appendMessage('bot', `**Synthesis Success** ${isFallback ? '(Turbo Fallback)' : '(Flux Engine)'} | ${w}x${h}`, false, new Date(), url);
-                scrollBottom();
-                sendBtn.removeAttribute('disabled');
-            };
-            img.onerror = () => {
-                if (!isFallback) {
-                    console.log("Flux failed, trying Turbo fallback...");
-                    const turboUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=turbo`;
-                    tryLoad(turboUrl, true);
-                } else {
-                    if (skeleton && skeleton.parentNode) skeleton.remove();
-                    appendMessage('bot', "Synthesis engine is currently overloaded. Please try a different prompt or style.");
-                    sendBtn.removeAttribute('disabled');
-                }
-            };
-            img.src = url;
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            updateBotMessage(botMsgDiv, `**EvoLink 32K Synthesis Success**\n\n**Expanded Prompt:** ${prompt}`, url);
+            sendBtn.disabled = false;
         };
-
-        tryLoad(fluxUrl);
+        img.onerror = () => {
+            updateBotMessage(botMsgDiv, "Synthesis failed. Retrying with Turbo...");
+            const turboUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=turbo`;
+            const turboImg = new Image();
+            turboImg.onload = () => {
+                updateBotMessage(botMsgDiv, `**EvoLink Turbo Fallback Success**\n\n**Expanded Prompt:** ${prompt}`, turboUrl);
+                sendBtn.disabled = false;
+            };
+            turboImg.src = turboUrl;
+        };
+        img.src = url;
     }
 
-    async function performA1111Synthesis(prompt, w, h, settings, skeleton) {
+    async function performA1111Synthesis(prompt, w, h, settings, botMsgDiv) {
         const url = settings.apiUrl || "http://127.0.0.1:7860";
         try {
             const res = await fetch(`${url}/sdapi/v1/txt2img`, {
@@ -305,83 +265,52 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ prompt, steps: parseInt(settings.steps), cfg_scale: parseFloat(settings.cfg), width: w, height: h })
             });
             const data = await res.json();
-            if (skeleton && skeleton.parentNode) skeleton.remove();
-            appendMessage('bot', `**Local Synthesis Ready**`, false, new Date(), `data:image/png;base64,${data.images[0]}`);
-            scrollBottom();
-            sendBtn.removeAttribute('disabled');
+            updateBotMessage(botMsgDiv, `**EvoLink Local Synthesis Success**`, `data:image/png;base64,${data.images[0]}`);
+            sendBtn.disabled = false;
         } catch(e) {
-            if (skeleton && skeleton.parentNode) skeleton.remove();
-            appendMessage('bot', "Local A1111 connection failed.");
-            sendBtn.removeAttribute('disabled');
+            updateBotMessage(botMsgDiv, "Local A1111 connection failed.");
+            sendBtn.disabled = false;
         }
     }
 
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
-        const div = document.createElement('div'); 
-        div.className = `message ${sender}`;
+        const div = document.createElement('div'); div.className = `message ${sender}`;
         const avatar = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
-        
-        let media = ''; 
-        if (fileUrl) {
-            media = `
-                <div class="message-media" style="margin-top:15px;">
-                    <img src="${fileUrl}" style="max-width:100%; border-radius:12px; box-shadow:var(--shadow-lg);">
-                    <button onclick="downloadFromDOM(this)" class="send-btn" style="width:auto; padding:0 20px; margin-top:10px; font-size:0.8rem;">
-                        <i class="fa-solid fa-download"></i> Download
-                    </button>
-                </div>`;
-        }
-
-        let atts = ''; 
-        if (currentAttachments && currentAttachments.length > 0) { 
-            atts = '<div class="message-attachments" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">'; 
-            currentAttachments.forEach(a => { 
-                if (a.type.startsWith('image/')) atts += `<img src="${a.data}" style="max-width:200px; border-radius:8px;">`; 
-                else if (a.type.startsWith('audio/')) atts += `<audio controls src="${a.data}"></audio>`; 
-                else if (a.type.startsWith('video/')) atts += `<video controls src="${a.data}"></video>`; 
-                else atts += `<div class="file-card"><i class="fa-solid fa-file file-icon"></i><div class="file-info"><span class="file-name">${a.name}</span><span class="file-size">${a.size}</span></div></div>`; 
-            }); 
-            atts += '</div>'; 
-        }
-
-        const safeText = text || "";
-        const htmlContent = isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(safeText) : safeText);
-
         div.innerHTML = `
             <div class="msg-avatar ${sender}">${avatar}</div>
             <div class="msg-body">
                 <div class="message-header">
-                    <span class="msg-sender">${sender==='user'?'User':'ChandraXImage'}</span>
+                    <span class="msg-sender">${sender==='user'?'User':'EvoLink AI'}</span>
                     <span class="message-time">${date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
                 </div>
-                <div class="msg-text">${htmlContent}</div>
-                ${atts}${media}
+                <div class="msg-text">${isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : (typeof marked !== 'undefined' ? marked.parse(text) : text)}</div>
             </div>
         `;
-        messagesWrapper.appendChild(div); 
-        scrollBottom(); 
-        return div;
+        messagesWrapper.appendChild(div); scrollBottom(); return div;
+    }
+
+    function updateBotMessage(div, text, fileUrl = null) {
+        const msgBody = div.querySelector('.msg-text');
+        msgBody.innerHTML = typeof marked !== 'undefined' ? marked.parse(text) : text;
+        if (fileUrl) {
+            const media = document.createElement('div'); media.className = 'message-media'; media.style.marginTop = '15px';
+            media.innerHTML = `<img src="${fileUrl}" style="max-width:100%; border-radius:12px; box-shadow:var(--shadow-lg);"><br><button onclick="downloadFromDOM(this)" class="send-btn" style="width:auto; padding:0 20px; margin-top:10px; font-size:0.8rem;"><i class="fa-solid fa-download"></i> Download</button>`;
+            div.querySelector('.msg-body').appendChild(media);
+        }
+        scrollBottom();
     }
 
     window.downloadFromDOM = (btn) => {
-        const img = btn.previousElementSibling;
-        const canvas = document.createElement('canvas'); 
-        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        const img = btn.previousElementSibling.previousElementSibling;
+        const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
         canvas.getContext('2d').drawImage(img, 0, 0);
-        canvas.toBlob(blob => { 
-            const a = document.createElement('a'); 
-            a.href = URL.createObjectURL(blob); 
-            a.download = `ChandraX-${Date.now()}.png`; 
-            a.click(); 
-        });
+        canvas.toBlob(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `EvoLink-${Date.now()}.png`; a.click(); });
     };
 
     function showToast(msg, type = 'success') {
-        const container = document.getElementById('toast-container');
-        if (!container) return;
+        const container = document.getElementById('toast-container'); if (!container) return;
         const t = document.createElement('div'); t.className = `toast ${type}`; t.innerText = msg;
-        container.appendChild(t); 
-        setTimeout(() => t.remove(), 3000);
+        container.appendChild(t); setTimeout(() => t.remove(), 3000);
     }
 
     function loadSettings() {
@@ -391,13 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Listeners ---
-    Object.values(settingsEls).forEach(el => {
-        if (el) el.onchange = () => {
-            updateSliderLabels();
-            toggleLocalSettings();
-        };
-    });
-
+    Object.values(settingsEls).forEach(el => { if (el) el.onchange = () => { updateSliderLabels(); toggleLocalSettings(); }; });
     settingsEls.steps.oninput = updateSliderLabels;
     settingsEls.cfg.oninput = updateSliderLabels;
 
@@ -411,21 +334,9 @@ document.addEventListener('DOMContentLoaded', () => {
     mobileMenuBtn.onclick = () => { sidebar.classList.toggle('open'); if (sidebarOverlay) sidebarOverlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; };
     if (sidebarOverlay) sidebarOverlay.onclick = () => { sidebar.classList.remove('open'); sidebarOverlay.style.display = 'none'; };
     newChatBtn.onclick = () => { messagesWrapper.innerHTML = ''; welcomeScreen.style.display = 'flex'; };
-    
-    chatInput.oninput = function() { 
-        this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; 
-        sendBtn.disabled = !this.value.trim() && attachments.length === 0; 
-    };
-    
+    chatInput.oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; sendBtn.disabled = !this.value.trim() && attachments.length === 0; };
     chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
     sendBtn.onclick = sendMessage;
-
-    document.querySelectorAll('.suggestion-card').forEach(c => {
-        c.onclick = () => { 
-            const p = c.querySelector('p strong');
-            if (p) { chatInput.value = p.innerText; sendMessage(); }
-        };
-    });
 
     init();
 });
