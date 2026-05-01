@@ -303,11 +303,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="message-media" style="margin-top: 10px;">
                     <img src="${fileUrl}" alt="AI Image" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); display: block;">
                     <div style="display:flex; gap:10px; margin-top:12px;">
-                        <button onclick="window.open('${fileUrl}')" class="msg-action-btn" style="background: var(--chandra-gradient); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; flex: 1;">
-                            <i class="fa-solid fa-expand"></i> View Full
-                        </button>
-                        <button onclick="downloadImage('${fileUrl}')" class="msg-action-btn" style="background: rgba(255,255,255,0.1); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                            <i class="fa-solid fa-download"></i>
+                        <button onclick="downloadImage('${fileUrl}')" class="msg-action-btn" style="background: var(--chandra-gradient); color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <i class="fa-solid fa-download"></i> Download 4K Image
                         </button>
                     </div>
                 </div>`;
