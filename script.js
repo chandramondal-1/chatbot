@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let avatarContent = sender === 'user' 
             ? (currentUser?.photoURL ? `<img src="${currentUser.photoURL}" alt="U" style="width:100%; height:100%; border-radius:4px;">` : 'U')
             : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
-        const senderName = sender === 'user' ? (currentUser?.displayName?.split(' ')[0] || 'User') : '4K Agent';
+        const senderName = sender === 'user' ? (currentUser?.displayName?.split(' ')[0] || 'User') : 'ChandraXImage';
         const timeStr = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...';
         
         let mediaContent = '';
