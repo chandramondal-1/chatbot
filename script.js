@@ -357,13 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];
-        const isImage = /image|picture|photo|draw|create.*img|generate.*img|sketch|paint/i.test(userText);
         const isCoding = codingKeywords.some(keyword => userText.toLowerCase().includes(keyword));
-
-        if (isImage) {
-            handleImageGeneration(userText, skeletonDiv);
-            return;
-        }
 
         const modelType = isCoding ? 'deepseek' : 'nvidia';
 
