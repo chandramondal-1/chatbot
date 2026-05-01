@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- Firebase Initialization (Placeholder - Replace with your config) ---
+    // --- Firebase (REPLACE WITH YOUR KEYS) ---
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
         authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
         appId: "YOUR_APP_ID"
     };
     
-    // Check if Firebase is available
     let auth = null;
     if (typeof firebase !== 'undefined') {
         firebase.initializeApp(firebaseConfig);
@@ -63,7 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function init() {
         if (localStorage.getItem('chandra_theme') === 'light') {
             document.body.classList.add('light-mode');
-            themeToggleBtn.querySelector('i').className = 'fa-regular fa-moon';
+            const icon = themeToggleBtn ? themeToggleBtn.querySelector('i') : null;
+            if (icon) icon.className = 'fa-regular fa-moon';
         }
 
         const savedSettings = JSON.parse(localStorage.getItem('chandra_settings')) || {};
@@ -75,19 +75,19 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSliderLabels();
         renderHistory();
 
-        // Auth Listener
+        // Enhanced Auth State Listener
         if (auth) {
             auth.onAuthStateChanged(user => {
                 currentUser = user;
                 if (user) {
-                    loginBtn.style.display = 'none';
-                    userProfile.style.display = 'block';
-                    userAvatar.src = user.photoURL || 'assets/bot-logo.png';
-                    userName.innerText = user.displayName || 'User';
-                    showToast(`Welcome back, ${user.displayName.split(' ')[0]}!`, "success");
+                    if (loginBtn) loginBtn.style.display = 'none';
+                    if (userProfile) userProfile.style.display = 'block';
+                    if (userAvatar) userAvatar.src = user.photoURL || 'assets/bot-logo.png';
+                    if (userName) userName.innerText = user.displayName || 'User';
+                    console.log("User logged in:", user.displayName);
                 } else {
-                    loginBtn.style.display = 'flex';
-                    userProfile.style.display = 'none';
+                    if (loginBtn) loginBtn.style.display = 'flex';
+                    if (userProfile) userProfile.style.display = 'none';
                 }
             });
         }
@@ -96,26 +96,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Auth Actions ---
     if (loginBtn) {
         loginBtn.onclick = () => {
-            if (!auth) return showToast("Firebase not configured", "error");
+            if (!auth) return showToast("Firebase Configuration Required", "error");
             const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).catch(e => showToast(e.message, "error"));
+            loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Connecting...</span>';
+            auth.signInWithPopup(provider).catch(e => {
+                showToast(e.message, "error");
+                loginBtn.innerHTML = '<i class="fa-solid fa-user"></i> <span>Login with Google</span>';
+            });
         };
     }
 
     if (logoutBtn) {
         logoutBtn.onclick = () => {
-            if (auth) auth.signOut().then(() => showToast("Logged out", "info"));
+            if (auth) {
+                auth.signOut().then(() => {
+                    showToast("Signed out successfully", "info");
+                    window.location.reload(); // Force reload to clear state
+                });
+            }
         };
     }
 
     // --- Modal Control ---
-    openSettingsBtn.onclick = () => settingsModal.style.display = 'flex';
-    closeSettingsBtn.onclick = () => settingsModal.style.display = 'none';
-    saveSettingsBtn.onclick = () => {
-        localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
-        settingsModal.style.display = 'none';
-        showToast("CHANDRA x IMAGE Updated", "success");
-    };
+    if (openSettingsBtn) openSettingsBtn.onclick = () => settingsModal.style.display = 'flex';
+    if (closeSettingsBtn) closeSettingsBtn.onclick = () => settingsModal.style.display = 'none';
+    if (saveSettingsBtn) {
+        saveSettingsBtn.onclick = () => {
+            localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
+            settingsModal.style.display = 'none';
+            showToast("Settings Saved", "success");
+        };
+    }
     window.onclick = (e) => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
 
     function updateSliderLabels() {
@@ -125,48 +136,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function scrollBottom() {
         setTimeout(() => {
-            chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+            if (chatContainer) chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
         }, 100);
     }
 
     // --- Attachment Logic ---
-    attachBtn.onclick = () => fileInput.click();
-    fileInput.onchange = (e) => {
-        const files = Array.from(e.target.files);
-        files.forEach(file => {
-            if (attachments.length >= 5) return showToast("Max 5 files", "error");
-            const reader = new FileReader();
-            reader.onload = (re) => {
-                attachments.push({
-                    name: file.name,
-                    size: (file.size / 1024).toFixed(1) + " KB",
-                    type: file.type,
-                    data: re.target.result,
-                    id: Date.now() + Math.random()
-                });
-                renderAttachmentPreviews();
-                sendBtn.disabled = false;
-            };
-            if (file.type.startsWith('image/')) reader.readAsDataURL(file);
-            else reader.readAsText(file.slice(0, 100));
-        });
-        fileInput.value = '';
-    };
+    if (attachBtn) attachBtn.onclick = () => fileInput.click();
+    if (fileInput) {
+        fileInput.onchange = (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                if (attachments.length >= 5) return showToast("Max 5 files", "error");
+                const reader = new FileReader();
+                reader.onload = (re) => {
+                    attachments.push({
+                        name: file.name,
+                        size: (file.size / 1024).toFixed(1) + " KB",
+                        type: file.type,
+                        data: re.target.result,
+                        id: Date.now() + Math.random()
+                    });
+                    renderAttachmentPreviews();
+                    sendBtn.disabled = false;
+                };
+                if (file.type.startsWith('image/')) reader.readAsDataURL(file);
+                else reader.readAsText(file.slice(0, 100));
+            });
+            fileInput.value = '';
+        };
+    }
 
     function renderAttachmentPreviews() {
-        attachmentPreview.innerHTML = attachments.map(att => `
-            <div class="preview-pill">
-                ${att.type.startsWith('image/') ? `<img src="${att.data}">` : `<i class="fa-solid fa-file"></i>`}
-                <span>${att.name.length > 10 ? att.name.substring(0, 10) + '...' : att.name}</span>
-                <i class="fa-solid fa-xmark" onclick="removeAttachment(${att.id})"></i>
-            </div>
-        `).join('');
+        if (attachmentPreview) {
+            attachmentPreview.innerHTML = attachments.map(att => `
+                <div class="preview-pill">
+                    ${att.type.startsWith('image/') ? `<img src="${att.data}">` : `<i class="fa-solid fa-file"></i>`}
+                    <span>${att.name.length > 10 ? att.name.substring(0, 10) + '...' : att.name}</span>
+                    <i class="fa-solid fa-xmark" onclick="removeAttachment(${att.id})"></i>
+                </div>
+            `).join('');
+        }
     }
 
     window.removeAttachment = (id) => {
         attachments = attachments.filter(att => att.id !== id);
         renderAttachmentPreviews();
-        if (attachments.length === 0 && !chatInput.value.trim()) sendBtn.disabled = true;
+        if (attachments.length === 0 && chatInput && !chatInput.value.trim()) sendBtn.disabled = true;
     };
 
     // --- History Logic ---
@@ -210,9 +225,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function loadHistoryItem(prompt) {
-        messagesWrapper.innerHTML = '';
-        welcomeScreen.style.display = 'none';
-        chatInput.value = prompt;
+        if (messagesWrapper) messagesWrapper.innerHTML = '';
+        if (welcomeScreen) welcomeScreen.style.display = 'none';
+        if (chatInput) chatInput.value = prompt;
         if (window.innerWidth <= 768) { 
             sidebar.classList.remove('open'); 
             if (sidebarOverlay) sidebarOverlay.style.display = 'none'; 
@@ -230,7 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- CHANDRA x IMAGE Core ---
     async function sendMessage() {
         if (!currentUser) {
-            showToast("Please login to generate images", "error");
+            showToast("Login required for Extreme Synthesis", "info");
+            if (loginBtn) loginBtn.click();
             return;
         }
 
@@ -240,7 +256,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         saveToHistory(text);
         chatInput.value = ''; chatInput.style.height = 'auto'; sendBtn.disabled = true;
-        welcomeScreen.style.display = 'none'; attachments = []; renderAttachmentPreviews();
+        if (welcomeScreen) welcomeScreen.style.display = 'none'; 
+        attachments = []; 
+        renderAttachmentPreviews();
 
         appendMessage('user', text, false, new Date(), null, currentAttachments);
         const botMsgDiv = appendMessage('bot', '', true); // Skeleton
@@ -258,9 +276,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
             });
             if (textResponse.ok) finalPrompt = await textResponse.text();
-            else finalPrompt = `${text}, CHANDRA x IMAGE Style, 32K, photorealistic`;
         } catch (e) {
-            finalPrompt = `${text}, CHANDRA x IMAGE Style, 32K, photorealistic`;
+            console.warn("EvoLink Expansion busy, using direct mode.");
         }
 
         const settings = loadSettings();
@@ -268,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let w = 512 * qFactor, h = 512 * qFactor;
         if (settings.aspectRatio === '16:9') { w = 1280 * (qFactor/4); h = 720 * (qFactor/4); }
         else if (settings.aspectRatio === '9:16') { w = 720 * (qFactor/4); h = 1280 * (qFactor/4); }
+        
         const MAX_RES = 2048;
         if (w > MAX_RES || h > MAX_RES) { const r = Math.min(MAX_RES/w, MAX_RES/h); w=Math.floor(w*r); h=Math.floor(h*r); }
 
@@ -281,33 +299,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function performCloudSynthesis(prompt, w, h, settings, botMsgDiv) {
         const seed = Math.floor(Math.random() * 1000000);
-        const models = ['flux', 'turbo', 'dreamshaper']; // Triple Fallback
+        const models = ['flux', 'turbo', 'dreamshaper']; 
         
         for (let i = 0; i < models.length; i++) {
             const currentModel = models[i];
             const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=${currentModel}`;
-            
             try {
-                if (i > 0) updateBotStatus(botMsgDiv, `Retrying with ${currentModel} engine...`);
-                
+                if (i > 0) updateBotStatus(botMsgDiv, `Switching to ${currentModel} engine...`);
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
-
-                const response = await fetch(url, { signal: controller.signal });
-                clearTimeout(timeoutId);
-
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
-                const blob = await response.blob();
-                const blobUrl = URL.createObjectURL(blob);
-                
-                updateBotMessage(botMsgDiv, `**CHANDRA x IMAGE 32K Success**\n\n**Engine:** ${currentModel.toUpperCase()}\n\n**EvoLink Prompt:** ${prompt}`, blobUrl);
+                const tId = setTimeout(() => controller.abort(), 25000);
+                const res = await fetch(url, { signal: controller.signal });
+                clearTimeout(tId);
+                if (!res.ok) throw new Error("API Busy");
+                const blob = await res.blob();
+                updateBotMessage(botMsgDiv, `**CHANDRA x IMAGE 32K Success**\n\n**Engine:** ${currentModel.toUpperCase()}\n\n**Expanded Prompt:** ${prompt}`, URL.createObjectURL(blob));
                 sendBtn.disabled = false;
-                return; // Success!
+                return;
             } catch (err) {
-                console.warn(`Model ${currentModel} failed:`, err);
                 if (i === models.length - 1) {
-                    updateBotMessage(botMsgDiv, "The synthesis engines are currently saturated. Please try a shorter prompt or wait 10 seconds.");
+                    updateBotMessage(botMsgDiv, "Engines saturated. Please try again in 10s.");
                     sendBtn.disabled = false;
                 }
             }
@@ -316,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateBotStatus(div, statusText) {
         const msgBody = div.querySelector('.msg-text');
-        if (msgBody) msgBody.innerHTML = `<div class="skeleton-line"></div><p style="font-size:0.8rem; opacity:0.7;">${statusText}</p>`;
+        if (msgBody) msgBody.innerHTML = `<div class="skeleton-line"></div><p style="font-size:0.8rem; opacity:0.6;">${statusText}</p>`;
     }
 
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
@@ -334,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="msg-text">${htmlContent}</div>
             </div>
         `;
-        messagesWrapper.appendChild(div); scrollBottom(); return div;
+        if (messagesWrapper) messagesWrapper.appendChild(div); scrollBottom(); return div;
     }
 
     function updateBotMessage(div, text, fileUrl = null) {
@@ -370,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Listeners ---
-    Object.values(settingsEls).forEach(el => { if (el) el.onchange = () => { updateSliderLabels(); }; });
+    Object.values(settingsEls).forEach(el => { if (el) el.onchange = () => updateSliderLabels(); });
     if (settingsEls.steps) settingsEls.steps.oninput = updateSliderLabels;
     if (settingsEls.cfg) settingsEls.cfg.oninput = updateSliderLabels;
 
@@ -378,15 +388,26 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.toggle('light-mode');
         const isLight = document.body.classList.contains('light-mode');
         localStorage.setItem('chandra_theme', isLight ? 'light' : 'dark');
-        themeToggleBtn.querySelector('i').className = isLight ? 'fa-regular fa-moon' : 'fa-regular fa-sun';
+        const icon = themeToggleBtn.querySelector('i');
+        if (icon) icon.className = isLight ? 'fa-regular fa-moon' : 'fa-regular fa-sun';
     };
 
-    mobileMenuBtn.onclick = () => { sidebar.classList.toggle('open'); if (sidebarOverlay) sidebarOverlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; };
+    if (mobileMenuBtn) {
+        mobileMenuBtn.onclick = () => { 
+            sidebar.classList.toggle('open'); 
+            if (sidebarOverlay) sidebarOverlay.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; 
+        };
+    }
     if (sidebarOverlay) sidebarOverlay.onclick = () => { sidebar.classList.remove('open'); sidebarOverlay.style.display = 'none'; };
-    newChatBtn.onclick = () => { messagesWrapper.innerHTML = ''; welcomeScreen.style.display = 'flex'; };
-    chatInput.oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; sendBtn.disabled = !this.value.trim() && attachments.length === 0; };
-    chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
-    sendBtn.onclick = sendMessage;
+    if (newChatBtn) newChatBtn.onclick = () => { messagesWrapper.innerHTML = ''; welcomeScreen.style.display = 'flex'; };
+    if (chatInput) {
+        chatInput.oninput = function() { 
+            this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; 
+            sendBtn.disabled = !this.value.trim() && attachments.length === 0; 
+        };
+        chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
+    }
+    if (sendBtn) sendBtn.onclick = sendMessage;
 
     init();
 });

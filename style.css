@@ -543,3 +543,60 @@ textarea {
 #user-profile {
     animation: fadeIn 0.5s ease;
 }
+
+/* --- Sidebar & Button Fixes --- */
+.sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+    margin-top: auto;
+}
+
+.nav-btn, .footer-btn {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px 16px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    color: var(--text-main) !important;
+    font-size: 0.9rem !important;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap !important;
+    overflow: hidden;
+}
+
+.nav-btn i, .footer-btn i {
+    width: 20px;
+    text-align: center;
+    font-size: 1.1rem;
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: var(--accent-primary) !important;
+    transform: translateX(4px);
+}
+
+#login-btn {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+    border: none !important;
+    font-weight: 600;
+}
+
+#login-btn:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 15px rgba(124, 77, 255, 0.4);
+}
+
+#user-profile {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 12px !important;
+    margin-bottom: 15px !important;
+}
