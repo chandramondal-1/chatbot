@@ -27,76 +27,19 @@
                 </ul>
             </div>
 
-            <div class="sidebar-section">
-                <div class="section-title">Generation Settings</div>
-                
-                <div class="setting-item">
-                    <label>Image Style</label>
-                    <select id="image-style-select">
-                        <option value="pro">4K Agent Pro (Realistic)</option>
-                        <option value="anime">Anime / Manga</option>
-                        <option value="cinematic">Cinematic / 3D</option>
-                        <option value="artistic">Artistic / Oil Painting</option>
-                    </select>
-                </div>
-
-                <div class="setting-item">
-                    <label>Aspect Ratio</label>
-                    <select id="aspect-ratio-select">
-                        <option value="1:1">Square (1:1)</option>
-                        <option value="16:9">Widescreen (16:9)</option>
-                        <option value="9:16">Portrait (9:16)</option>
-                        <option value="4:3">Photo (4:3)</option>
-                        <option value="21:9">Ultra-Wide (21:9)</option>
-                    </select>
-                </div>
-
-                <div class="setting-item">
-                    <label>Connection Hub</label>
-                    <select id="connection-mode">
-                        <option value="cloud">Cloud (Stable Diffusion)</option>
-                        <option value="a1111">Local A1111 (Private)</option>
-                    </select>
-                </div>
-
-                <div id="local-settings" style="display: none;">
-                    <div class="setting-item">
-                        <label>API URL</label>
-                        <input type="text" id="api-url" placeholder="http://127.0.0.1:7860" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); color: white; padding: 6px; border-radius: 4px; font-size: 0.75rem;">
-                    </div>
-                </div>
-
-                <div class="setting-item">
-                    <label>Synthesis Engine</label>
-                    <select id="image-model-select">
-                        <option value="automatic1111">Stable Diffusion (A1111)</option>
-                    </select>
-                </div>
-
-                <div class="setting-item">
-                    <label>Synthesis Quality</label>
-                    <select id="quality-select">
-                        <option value="1">Standard (1K)</option>
-                        <option value="1.5">Ultra (2K)</option>
-                        <option value="2">Pro (4K Synthesis)</option>
-                    </select>
-                </div>
-
-                <div class="setting-item">
-                    <label>Sampling Steps</label>
-                    <input type="range" id="steps-slider" min="10" max="100" value="30" step="1">
-                    <div class="slider-value" id="steps-val">30</div>
-                </div>
-
-                <div class="setting-item">
-                    <label>CFG Scale</label>
-                    <input type="range" id="cfg-slider" min="1" max="20" value="7.5" step="0.5">
-                    <div class="slider-value" id="cfg-val">7.5</div>
-                </div>
-
+            <!-- History Container Only -->
+            <div class="history-container">
+                <div class="section-title" style="padding: 0.5rem 0.75rem;">Recent</div>
+                <ul class="history-list" id="history-list">
+                    <!-- History items injected here -->
+                </ul>
             </div>
 
             <div class="sidebar-footer">
+                <button class="footer-btn" id="open-settings-btn">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Settings</span>
+                </button>
                 <button class="footer-btn" id="theme-toggle">
                     <i class="fa-regular fa-sun"></i>
                     <span>Theme</span>
@@ -165,6 +108,83 @@
             </footer>
         </main>
         <div id="sidebar-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:90;"></div>
+
+        <!-- Generation Settings Modal -->
+        <div id="settings-modal" class="modal-overlay" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Generation Settings</h2>
+                    <i class="fa-solid fa-xmark close-modal" id="close-settings-btn"></i>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label>Image Style</label>
+                            <select id="image-style-select">
+                                <option value="pro">4K Agent Pro (Realistic)</option>
+                                <option value="anime">Anime / Manga</option>
+                                <option value="cinematic">Cinematic / 3D</option>
+                                <option value="artistic">Artistic / Oil Painting</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Aspect Ratio</label>
+                            <select id="aspect-ratio-select">
+                                <option value="1:1">Square (1:1)</option>
+                                <option value="16:9">Widescreen (16:9)</option>
+                                <option value="9:16">Portrait (9:16)</option>
+                                <option value="4:3">Photo (4:3)</option>
+                                <option value="21:9">Ultra-Wide (21:9)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Synthesis Quality</label>
+                            <select id="quality-select">
+                                <option value="1">Standard (1K)</option>
+                                <option value="1.5">Ultra (2K)</option>
+                                <option value="2">Pro (4K Synthesis)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Connection Hub</label>
+                            <select id="connection-mode">
+                                <option value="cloud">Cloud (Stable Diffusion)</option>
+                                <option value="a1111">Local A1111 (Private)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="local-settings" style="display: none; margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                        <div class="setting-item">
+                            <label>Local API URL</label>
+                            <input type="text" id="api-url" placeholder="http://127.0.0.1:7860">
+                        </div>
+                    </div>
+
+                    <div class="settings-advanced" style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
+                        <div class="setting-item">
+                            <label>Sampling Steps</label>
+                            <input type="range" id="steps-slider" min="10" max="100" value="30" step="1">
+                            <div class="slider-value" id="steps-val">30</div>
+                        </div>
+                        <div class="setting-item">
+                            <label>CFG Scale</label>
+                            <input type="range" id="cfg-slider" min="1" max="20" value="7.5" step="0.5">
+                            <div class="slider-value" id="cfg-val">7.5</div>
+                        </div>
+                        <div class="setting-item" style="display: none;">
+                            <label>Engine</label>
+                            <select id="image-model-select">
+                                <option value="automatic1111">Stable Diffusion (A1111)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="send-btn" style="width: 100%; border-radius: 12px;" id="save-settings-btn">Save Changes</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="script.js"></script>

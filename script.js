@@ -11,6 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.querySelector('.sidebar');
     const sidebarOverlay = document.getElementById('sidebar-overlay');
     
+    // Modal Elements
+    const settingsModal = document.getElementById('settings-modal');
+    const openSettingsBtn = document.getElementById('open-settings-btn');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+
     const settingsEls = {
         imageStyle: document.getElementById('image-style-select'),
         aspectRatio: document.getElementById('aspect-ratio-select'),
@@ -34,13 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization ---
     function init() {
-        // Load Theme
         if (localStorage.getItem('chandra_theme') === 'light') {
             document.body.classList.add('light-mode');
             themeToggleBtn.querySelector('i').className = 'fa-regular fa-moon';
         }
 
-        // Load Settings
         const savedSettings = JSON.parse(localStorage.getItem('chandra_settings')) || {};
         Object.keys(settingsEls).forEach(key => {
             if (savedSettings[key] && settingsEls[key]) {
@@ -52,7 +56,16 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHistory();
     }
 
-    // --- UI Logic ---
+    // --- Modal Control ---
+    openSettingsBtn.onclick = () => settingsModal.style.display = 'flex';
+    closeSettingsBtn.onclick = () => settingsModal.style.display = 'none';
+    saveSettingsBtn.onclick = () => {
+        localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
+        settingsModal.style.display = 'none';
+        showToast("Settings Saved", "success");
+    };
+    window.onclick = (e) => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
+
     function updateSliderLabels() {
         if (settingsEls.stepsVal) settingsEls.stepsVal.innerText = settingsEls.steps.value;
         if (settingsEls.cfgVal) settingsEls.cfgVal.innerText = settingsEls.cfg.value;
@@ -107,42 +120,25 @@ document.addEventListener('DOMContentLoaded', () => {
     window.interrogateImage = async (id) => {
         const att = attachments.find(a => a.id === id);
         if (!att || !att.data) return;
-
-        showToast("Analyzing image (EvoLink AI)...", "info");
-        
+        showToast("Analyzing (EvoLink)...", "info");
         try {
-            // Using Pollinations Text API as a Vision Interrogator
-            const systemPrompt = "You are an expert prompt engineer. Analyze the image and generate a professional, highly detailed prompt for Stable Diffusion (A1111 style). Include lighting, style, and composition keywords. Return ONLY the prompt text.";
-            
-            const response = await fetch('https://text.pollinations.ai/', {
+            const res = await fetch('https://text.pollinations.ai/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: [
-                            { type: 'text', text: "Describe this image for AI generation." },
-                            { type: 'image_url', image_url: { url: att.data } }
-                        ]}
+                        { role: 'system', content: "Expert prompt engineer. Return ONLY a Stable Diffusion prompt for this image." },
+                        { role: 'user', content: [{ type: 'text', text: "Describe this image." }, { type: 'image_url', image_url: { url: att.data } }]}
                     ],
-                    model: 'gpt-4o' 
+                    model: 'gpt-4o'
                 })
             });
-
-            if (!response.ok) throw new Error("Vision engine busy");
-            const promptText = await response.text();
-            
-            chatInput.value = promptText.trim();
-            chatInput.style.height = 'auto';
-            chatInput.style.height = chatInput.scrollHeight + 'px';
+            const pText = await res.text();
+            chatInput.value = pText.trim();
+            chatInput.style.height = 'auto'; chatInput.style.height = chatInput.scrollHeight + 'px';
             sendBtn.disabled = false;
             showToast("Prompt Extracted!", "success");
-        } catch (e) {
-            showToast("Interrogation failed. Fallback active.", "error");
-            // Fallback: Simple keyword extraction (simulated)
-            chatInput.value = "A professional masterpiece of " + att.name.split('.')[0] + ", highly detailed, cinematic lighting";
-            sendBtn.disabled = false;
-        }
+        } catch (e) { showToast("Vision busy", "error"); }
     };
 
     window.removeAttachment = (id) => {
@@ -199,12 +195,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!text && currentAttachments.length === 0) return;
 
         saveToHistory(text);
-        chatInput.value = '';
-        chatInput.style.height = 'auto';
-        sendBtn.disabled = true;
-        welcomeScreen.style.display = 'none';
-        attachments = [];
-        renderAttachmentPreviews();
+        chatInput.value = ''; chatInput.style.height = 'auto'; sendBtn.disabled = true;
+        welcomeScreen.style.display = 'none'; attachments = []; renderAttachmentPreviews();
 
         appendMessage('user', text, false, new Date(), null, currentAttachments);
         const skeletonDiv = appendMessage('bot', '', true);
@@ -220,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         w = Math.floor(w * parseFloat(settings.quality));
         h = Math.floor(h * parseFloat(settings.quality));
 
-        let finalPrompt = `${cleanPrompt}, masterpiece, ultra-hd, 8k, photorealistic, sharp focus, cinematic lighting`;
+        let finalPrompt = `${cleanPrompt}, masterpiece, ultra-hd, 8k, photorealistic, sharp focus`;
         if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime illustration`;
         else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3d render, unreal engine 5`;
         else if (settings.imageStyle === 'artistic') finalPrompt += `, artistic oil painting style`;
@@ -242,11 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
         img.crossOrigin = "anonymous";
         img.onload = () => {
             if (skeleton) skeleton.remove();
-            appendMessage('bot', `**Quality:** ${settings.quality}x | Steps: ${settings.steps}`, false, new Date(), cloudUrl);
+            appendMessage('bot', `**Synthesis Quality:** ${settings.quality}x | Steps: ${settings.steps}`, false, new Date(), cloudUrl);
             scrollBottom();
             sendBtn.removeAttribute('disabled');
         };
-        img.onerror = () => { throw new Error("Cloud timeout"); };
+        img.onerror = () => { throw new Error("Cloud busy"); };
         img.src = cloudUrl;
     }
 
@@ -259,61 +251,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const data = await res.json();
         if (skeleton) skeleton.remove();
-        appendMessage('bot', `**Local A1111 Synthesis Ready**`, false, new Date(), `data:image/png;base64,${data.images[0]}`);
+        appendMessage('bot', `**Local Synthesis Ready**`, false, new Date(), `data:image/png;base64,${data.images[0]}`);
         scrollBottom();
         sendBtn.removeAttribute('disabled');
     }
 
     function appendMessage(sender, text, isSkeleton = false, date = new Date(), fileUrl = null, currentAttachments = []) {
-        const div = document.createElement('div');
-        div.className = `message ${sender}`;
+        const div = document.createElement('div'); div.className = `message ${sender}`;
         const avatar = sender === 'user' ? 'U' : '<i class="fa-solid fa-wand-magic-sparkles"></i>';
-        
-        let media = '';
-        if (fileUrl) {
-            media = `<div class="message-media" style="margin-top:15px;"><img src="${fileUrl}" style="max-width:100%; border-radius:12px; box-shadow:var(--shadow-lg);" onload="window.scrollTo(0,document.body.scrollHeight)"><button onclick="downloadFromDOM(this)" class="send-btn" style="width:auto; padding:0 20px; margin-top:10px; font-size:0.8rem;"><i class="fa-solid fa-download"></i> Download</button></div>`;
-        }
-
-        let atts = '';
-        if (currentAttachments.length > 0) {
-            atts = '<div class="message-attachments" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">';
-            currentAttachments.forEach(a => {
-                if (a.type.startsWith('image/')) atts += `<img src="${a.data}" style="max-width:200px; border-radius:8px;">`;
-                else if (a.type.startsWith('audio/')) atts += `<audio controls src="${a.data}"></audio>`;
-                else if (a.type.startsWith('video/')) atts += `<video controls src="${a.data}"></video>`;
-                else atts += `<div class="file-card"><i class="fa-solid fa-file file-icon"></i><div class="file-info"><span class="file-name">${a.name}</span><span class="file-size">${a.size}</span></div></div>`;
-            });
-            atts += '</div>';
-        }
-
-        div.innerHTML = `
-            <div class="msg-avatar ${sender}">${avatar}</div>
-            <div class="msg-body">
-                <div class="message-header"><span class="msg-sender">${sender==='user'?'User':'ChandraXImage'}</span><span class="message-time">${date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div>
-                <div class="msg-text">${isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : marked.parse(text)}</div>
-                ${atts}${media}
-            </div>
-        `;
-        messagesWrapper.appendChild(div);
-        scrollBottom();
-        return div;
+        let media = ''; if (fileUrl) media = `<div class="message-media" style="margin-top:15px;"><img src="${fileUrl}" style="max-width:100%; border-radius:12px; box-shadow:var(--shadow-lg);"><button onclick="downloadFromDOM(this)" class="send-btn" style="width:auto; padding:0 20px; margin-top:10px; font-size:0.8rem;"><i class="fa-solid fa-download"></i> Download</button></div>`;
+        let atts = ''; if (currentAttachments.length > 0) { atts = '<div class="message-attachments" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;">'; currentAttachments.forEach(a => { if (a.type.startsWith('image/')) atts += `<img src="${a.data}" style="max-width:200px; border-radius:8px;">`; else if (a.type.startsWith('audio/')) atts += `<audio controls src="${a.data}"></audio>`; else if (a.type.startsWith('video/')) atts += `<video controls src="${a.data}"></video>`; else atts += `<div class="file-card"><i class="fa-solid fa-file file-icon"></i><div class="file-info"><span class="file-name">${a.name}</span><span class="file-size">${a.size}</span></div></div>`; }); atts += '</div>'; }
+        div.innerHTML = `<div class="msg-avatar ${sender}">${avatar}</div><div class="msg-body"><div class="message-header"><span class="msg-sender">${sender==='user'?'User':'ChandraXImage'}</span><span class="message-time">${date.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span></div><div class="msg-text">${isSkeleton ? '<div class="skeleton-line"></div><div class="skeleton-line"></div>' : marked.parse(text)}</div>${atts}${media}</div>`;
+        messagesWrapper.appendChild(div); scrollBottom(); return div;
     }
 
     window.downloadFromDOM = (btn) => {
         const img = btn.previousElementSibling;
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        const canvas = document.createElement('canvas'); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
         canvas.getContext('2d').drawImage(img, 0, 0);
-        canvas.toBlob(blob => {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob); a.download = `ChandraX-${Date.now()}.png`; a.click();
-        });
+        canvas.toBlob(blob => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ChandraX-${Date.now()}.png`; a.click(); });
     };
 
     function showToast(msg, type = 'success') {
         const t = document.createElement('div'); t.className = `toast ${type}`; t.innerText = msg;
-        document.getElementById('toast-container').appendChild(t);
-        setTimeout(() => t.remove(), 3000);
+        document.getElementById('toast-container').appendChild(t); setTimeout(() => t.remove(), 3000);
     }
 
     function loadSettings() {
@@ -327,7 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el) el.onchange = () => {
             updateSliderLabels();
             toggleLocalSettings();
-            localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
         };
     });
 
@@ -345,11 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sidebarOverlay.onclick = () => { sidebar.classList.remove('open'); sidebarOverlay.style.display = 'none'; };
     newChatBtn.onclick = () => { messagesWrapper.innerHTML = ''; welcomeScreen.style.display = 'flex'; currentChatId = null; };
     
-    chatInput.oninput = function() {
-        this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px';
-        sendBtn.disabled = !this.value.trim() && attachments.length === 0;
-    };
-    
+    chatInput.oninput = function() { this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'; sendBtn.disabled = !this.value.trim() && attachments.length === 0; };
     chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } };
     sendBtn.onclick = sendMessage;
 
