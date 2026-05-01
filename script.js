@@ -20,6 +20,11 @@ const firebaseConfig = {
 
 
 // Initialize Firebase
+// API Configuration
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? '' 
+    : 'https://YOUR-RENDER-URL.onrender.com'; // REPLACE THIS after deploying to Render
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -381,7 +386,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modelType === 'nvidia' && isCoding) modelType = 'deepseek';
 
         try {
-            const response = await fetch('/api/chat', {
+            const response = await fetch(`${API_BASE_URL}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -424,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const settings = loadSettings();
             const cleanText = prompt.substring(0, 1000);
-            const audioUrl = `/api/proxy/audio?text=${encodeURIComponent(cleanText)}&voice=${settings.voice}`;
+            const audioUrl = `${API_BASE_URL}/api/proxy/audio?text=${encodeURIComponent(cleanText)}&voice=${settings.voice}`;
             
             skeletonDiv.remove();
             const replyText = `I have generated a voice note for your text: "${cleanText.substring(0, 50)}..."`;
@@ -479,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const resMatch = prompt.match(/\b(2K|4K)\b/i);
             const resolution = resMatch ? resMatch[1].toUpperCase() : '';
 
-            const imageUrl = `/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}`;
+            const imageUrl = `${API_BASE_URL}/api/proxy/image?prompt=${encodeURIComponent(styleWrapper)}&aspect_ratio=${aspect}&resolution=${resolution}`;
             
             const img = new Image();
             img.src = imageUrl;

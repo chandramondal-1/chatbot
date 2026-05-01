@@ -1,8 +1,10 @@
 const express = require('express');
 const path = require('path');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
+app.use(cors()); // Allow all origins for simplicity in this dev phase
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
