@@ -26,6 +26,7 @@ app.get('/api/proxy/image', async (req, res) => {
                 
                 // Map model for OpenRouter
                 let apiModel = "black-forest-labs/flux-pro-1.1"; // Default Pro
+                if (model === 'diffusion-4k') apiModel = "black-forest-labs/flux-pro-1.1";
                 if (model === 'nanobanana-pro') apiModel = "black-forest-labs/flux-pro";
                 if (model === 'seedream-pro') apiModel = "google/gemini-2.0-flash-exp:free";
 
@@ -81,7 +82,7 @@ app.get('/api/proxy/image', async (req, res) => {
         else if (resolution === '2K') { width = Math.min(Math.round(width * 1.5), 2048); height = Math.min(Math.round(height * 1.5), 2048); }
 
         let pollinationsModel = 'flux'; 
-        if (resolution === '4K' || resolution === '2K' || model === 'nanobanana-pro') pollinationsModel = 'nanobanana-pro';
+        if (resolution === '4K' || resolution === '2K' || model === 'nanobanana-pro' || model === 'diffusion-4k') pollinationsModel = 'nanobanana-pro';
 
         const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${width}&height=${height}&model=${pollinationsModel}&seed=${Math.floor(Math.random() * 1000000)}&nologo=true&enhance=true`;
         
