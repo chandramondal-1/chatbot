@@ -133,15 +133,16 @@
                         <div class="setting-item">
                             <label>Synthesis Quality</label>
                             <select id="quality-select">
-                                <option value="1">Standard (1K)</option>
-                                <option value="1.5">Ultra (2K)</option>
-                                <option value="2">Pro (4K Synthesis)</option>
+                                <option value="4">Standard (4K)</option>
+                                <option value="8">Ultra (8K)</option>
+                                <option value="16">Pro (16K)</option>
+                                <option value="32">Extreme (32K)</option>
                             </select>
                         </div>
                         <div class="setting-item">
                             <label>Connection Hub</label>
                             <select id="connection-mode">
-                                <option value="cloud">Cloud (Stable Diffusion)</option>
+                                <option value="cloud">Cloud (EvoLink AI)</option>
                                 <option value="a1111">Local A1111 (Private)</option>
                             </select>
                         </div>
@@ -164,12 +165,6 @@
                             <label>CFG Scale</label>
                             <input type="range" id="cfg-slider" min="1" max="20" value="7.5" step="0.5">
                             <div class="slider-value" id="cfg-val">7.5</div>
-                        </div>
-                        <div class="setting-item" style="display: none;">
-                            <label>Engine</label>
-                            <select id="image-model-select">
-                                <option value="automatic1111">Stable Diffusion (A1111)</option>
-                            </select>
                         </div>
                     </div>
                 </div>

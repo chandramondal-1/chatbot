@@ -232,16 +232,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const settings = loadSettings();
         const cleanPrompt = text.replace(/generate|image|create|make/gi, '').trim() || "Synthesis";
 
-        let w = 1024, h = 1024;
-        if (settings.aspectRatio === '16:9') { w = 1280; h = 720; }
-        else if (settings.aspectRatio === '9:16') { w = 720; h = 1280; }
-        else if (settings.aspectRatio === '21:9') { w = 1440; h = 612; }
-        
-        // Quality scaling
-        w = Math.floor(w * parseFloat(settings.quality || 1));
-        h = Math.floor(h * parseFloat(settings.quality || 1));
+        // Resolution Base Scaling (Mini 4K, Max 32K)
+        // We use 512 as base, so Quality 4 = 2048 (4K), Quality 32 = 16384 (16K scaling)
+        // Note: Real 32K is 30720px, but we cap at 2048 for API stability and use prompt-upscaling.
+        const qFactor = parseFloat(settings.quality || 4);
+        let w = 512 * qFactor, h = 512 * qFactor;
 
-        // CAP RESOLUTION: Most APIs (including Pollinations) have limits. 2048px is a safe max.
+        if (settings.aspectRatio === '16:9') { w = 1280 * (qFactor/4); h = 720 * (qFactor/4); }
+        else if (settings.aspectRatio === '9:16') { w = 720 * (qFactor/4); h = 1280 * (qFactor/4); }
+        else if (settings.aspectRatio === '21:9') { w = 1440 * (qFactor/4); h = 612 * (qFactor/4); }
+
         const MAX_RES = 2048;
         if (w > MAX_RES || h > MAX_RES) {
             const ratio = Math.min(MAX_RES / w, MAX_RES / h);
@@ -249,10 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
             h = Math.floor(h * ratio);
         }
 
-        let finalPrompt = `${cleanPrompt}, masterpiece, ultra-hd, 8k, photorealistic, sharp focus`;
-        if (settings.imageStyle === 'anime') finalPrompt += `, vibrant anime illustration`;
-        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic 3d render, unreal engine 5`;
-        else if (settings.imageStyle === 'artistic') finalPrompt += `, artistic oil painting style`;
+        // EvoLink AI Professional Prompt Injection
+        let finalPrompt = `${cleanPrompt}, EvoLink AI Style, ${qFactor}K resolution, extreme detail, masterpiece, 32k ultra-hd, hyper-photorealistic, volumetric lighting, ray tracing, sharp focus, 8k textures`;
+        if (settings.imageStyle === 'anime') finalPrompt += `, high-end anime aesthetic, sharp lines, vibrant colors`;
+        else if (settings.imageStyle === 'cinematic') finalPrompt += `, cinematic film look, anamorphic lens flares, unreal engine 5.4`;
+        else if (settings.imageStyle === 'artistic') finalPrompt += `, professional oil painting, thick brushstrokes, museum quality`;
 
         try {
             if (settings.mode === 'cloud') await performCloudSynthesis(finalPrompt, w, h, settings, skeletonDiv);
