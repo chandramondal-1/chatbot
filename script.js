@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const connectionMode = document.getElementById('connection-mode');
     const localSettings = document.getElementById('local-settings');
     const apiUrlInput = document.getElementById('api-url');
+    const imageModelSelect = document.getElementById('image-model-select');
     const stepsSlider = document.getElementById('steps-slider');
     const cfgSlider = document.getElementById('cfg-slider');
     const stepsVal = document.getElementById('steps-val');
@@ -95,27 +96,29 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             if (settings.mode === 'cloud') {
                 await performCloudSynthesis(finalPrompt, w, h, settings, skeletonDiv);
-            } else if (settings.mode === 'a1111') {
-                await performA1111Synthesis(finalPrompt, w, h, settings, skeletonDiv);
-            } else if (settings.mode === 'localai') {
-                await performLocalAISynthesis(finalPrompt, w, h, settings, skeletonDiv);
+            } else if (settings.mode === 'a1111' || settings.mode === 'localai') {
+                // If in Local mode, we use the specific API call for that hub
+                if (settings.mode === 'a1111') await performA1111Synthesis(finalPrompt, w, h, settings, skeletonDiv);
+                else await performLocalAISynthesis(finalPrompt, w, h, settings, skeletonDiv);
             }
         } catch (error) {
             if (skeletonDiv && skeletonDiv.parentNode) skeletonDiv.remove();
-            appendMessage('bot', `Connection Failed: ${error.message}. If using Local mode, ensure your server is running with --cors-allow-origin=*`);
+            appendMessage('bot', `Synthesis Error: ${error.message}. Ensure your local server is running and CORS is enabled.`);
             sendBtn.removeAttribute('disabled');
         }
     }
 
-    // --- Cloud Synthesis (Pollinations Fallback) ---
+    // --- Cloud Synthesis (Differentiates based on Model selection) ---
     async function performCloudSynthesis(prompt, w, h, settings, skeleton) {
         const seed = Math.floor(Math.random() * 1000000);
-        const cloudPrompt = `Cloud synthesis: ${prompt}, professional quality, (steps: ${settings.steps}), (cfg: ${settings.cfg})`;
+        const engineLabel = settings.model === 'automatic1111' ? 'A1111-Style' : 'LocalAI-Style';
+        const cloudPrompt = `${engineLabel} synthesis: ${prompt}, masterpiece, (steps: ${settings.steps}), (cfg: ${settings.cfg})`;
+        
         const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(cloudPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true`;
         
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.onload = () => finalizeSynthesis(imageUrl, "Cloud Stable Diffusion", settings, skeleton);
+        img.onload = () => finalizeSynthesis(imageUrl, `Cloud ${engineLabel}`, settings, skeleton);
         img.onerror = () => { throw new Error("Cloud engine busy"); };
         img.src = imageUrl;
     }
@@ -131,13 +134,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 steps: parseInt(settings.steps),
                 cfg_scale: parseFloat(settings.cfg),
                 width: w,
-                height: h,
-                sampler_name: "Euler a"
+                height: h
             })
         });
         const data = await response.json();
-        const base64Image = `data:image/png;base64,${data.images[0]}`;
-        finalizeSynthesis(base64Image, "Local A1111", settings, skeleton);
+        finalizeSynthesis(`data:image/png;base64,${data.images[0]}`, "Local A1111", settings, skeleton);
     }
 
     // --- LocalAI API Integration ---
@@ -235,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
             aspectRatio: aspectRatioSelect.value,
             mode: connectionMode.value,
             apiUrl: apiUrlInput.value,
+            model: imageModelSelect.value,
             steps: stepsSlider.value,
             cfg: cfgSlider.value
         };
@@ -243,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stepsSlider.oninput = () => { stepsVal.innerText = stepsSlider.value; };
     cfgSlider.oninput = () => { cfgVal.innerText = cfgSlider.value; };
 
-    [imageStyleSelect, aspectRatioSelect, connectionMode, apiUrlInput, stepsSlider, cfgSlider].forEach(el => {
+    [imageStyleSelect, aspectRatioSelect, connectionMode, apiUrlInput, imageModelSelect, stepsSlider, cfgSlider].forEach(el => {
         el.onchange = () => localStorage.setItem('chandra_settings', JSON.stringify(loadSettings()));
     });
 

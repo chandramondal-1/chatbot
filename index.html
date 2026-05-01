@@ -68,6 +68,14 @@
                 </div>
 
                 <div class="setting-item">
+                    <label>Synthesis Engine</label>
+                    <select id="image-model-select">
+                        <option value="automatic1111">Stable Diffusion (A1111)</option>
+                        <option value="localai">LocalAI (Open-Source)</option>
+                    </select>
+                </div>
+
+                <div class="setting-item">
                     <label>Sampling Steps</label>
                     <input type="range" id="steps-slider" min="10" max="100" value="30" step="1">
                     <div class="slider-value" id="steps-val">30</div>
