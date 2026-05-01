@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Update input placeholder based on mode
             if (currentAppMode === 'image') {
-                chatInput.placeholder = "Describe the image...";
+                chatInput.placeholder = "Describe the image for 4K Agent...";
             } else if (currentAppMode === 'voice') {
                 chatInput.placeholder = "Type to speak...";
             } else {
@@ -348,12 +348,12 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
 
         const settings = loadSettings();
-        let systemPrompt = 'You are Chandra AI, a highly advanced multimodal assistant created by CHANDRA MONDAL. You are helpful, creative, and professional. You can see images if a URL is provided.';
+        let systemPrompt = 'You are Chandra AI, a highly advanced multimodal assistant created by CHANDRA MONDAL. You are powered by the 4K Agent, capable of generating hyper-realistic 4K resolution images. You are helpful, creative, and professional. You can see images if a URL is provided.';
         
         if (settings.textMode === 'creative') {
-            systemPrompt = 'You are a master storyteller and creative writer created by CHANDRA MONDAL. Be poetic and imaginative.';
+            systemPrompt = 'You are a master storyteller and creative writer created by CHANDRA MONDAL. Your descriptions are vivid and you can guide the 4K Agent to create stunning visual art.';
         } else if (settings.textMode === 'coder') {
-            systemPrompt = 'You are Chandra AI, an expert software engineer created by CHANDRA MONDAL. Provide clean, optimized code and technical depth.';
+            systemPrompt = 'You are Chandra AI, an expert software engineer created by CHANDRA MONDAL. You provide clean, optimized code and can assist with UI/UX design via the 4K Agent.';
         }
 
         const codingKeywords = ['code', 'function', 'script', 'programming', 'javascript', 'python', 'html', 'css', 'bug', 'debug', 'write a', 'create a'];

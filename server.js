@@ -65,60 +65,64 @@ app.post('/api/chat', async (req, res) => {
 // Proxy for Pollinations Image Generation (to hide Secret Key)
 app.get('/api/proxy/image', async (req, res) => {
     try {
-        const { prompt, width, height, model, aspect_ratio, resolution } = req.query;
+        const { prompt, aspect_ratio, resolution } = req.query;
         
-        const apiKey = process.env.GOOGLE_API_KEY;
+        const apiKey = process.env.OPENROUTER_API_KEY;
         if (!apiKey) {
-            return res.status(500).json({ error: "GOOGLE_API_KEY is missing in .env" });
+            return res.status(500).json({ error: "OPENROUTER_API_KEY is missing in .env" });
         }
 
-        // Use Nano Banana models (Gemini 3.1)
-        // Default to Flash, switch to Pro if 2K/4K is requested
-        const apiModel = (resolution === '2K' || resolution === '4K') ? 'gemini-3-pro-image-preview' : 'gemini-3.1-flash-image-preview';
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent?key=${apiKey}`;
+        // Use 4KAgent (Nano Banana) models via OpenRouter
+        const apiModel = (resolution === '2K' || resolution === '4K') 
+            ? 'google/gemini-3-pro-image-preview' 
+            : 'google/gemini-3.1-flash-image-preview';
 
-        console.log(`Generating image with ${apiModel} (Nano Banana)...`);
+        console.log(`Generating image with ${apiModel} (4K Agent via OpenRouter)...`);
 
-        const requestBody = {
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-                imageConfig: {
-                    aspectRatio: aspect_ratio || "1:1"
-                }
-            }
-        };
-
-        // If resolution is 2K or 4K, Pro model expects imageSize
-        if (resolution && (resolution === '2K' || resolution === '4K')) {
-            requestBody.generationConfig.imageConfig.imageSize = resolution;
-        }
-
-        const response = await fetch(apiUrl, {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://github.com/taco-group/4KAgent', // Reference to the 4KAgent project
+                'X-Title': '4K Agent Assistant'
+            },
+            body: JSON.stringify({
+                model: apiModel,
+                messages: [{ role: 'user', content: prompt }],
+                generation_config: {
+                    image_config: {
+                        aspect_ratio: aspect_ratio || "1:1",
+                        image_size: resolution || "1K"
+                    }
+                }
+            })
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            console.error("Gemini Image Error:", data);
+            console.error("OpenRouter Image Error:", data);
             return res.status(response.status).json(data);
         }
 
-        // Gemini returns base64 in inlineData
-        const part = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (!part) {
-            console.error("No image data returned from Gemini:", data);
+        // OpenRouter multimodal models return image data in the parts
+        const part = data.choices?.[0]?.message?.content?.parts?.find(p => p.inline_data || p.inlineData);
+        const imageData = part?.inline_data?.data || part?.inlineData?.data;
+        const mimeType = part?.inline_data?.mime_type || part?.inlineData?.mimeType || 'image/png';
+
+        if (!imageData) {
+            // Some models might return the image URL or the raw data differently
+            console.error("No image data found in response:", JSON.stringify(data));
             return res.status(500).json({ error: "No image data returned from AI" });
         }
 
-        const buffer = Buffer.from(part.inlineData.data, 'base64');
-        res.setHeader('Content-Type', part.inlineData.mimeType || 'image/png');
+        const buffer = Buffer.from(imageData, 'base64');
+        res.setHeader('Content-Type', mimeType);
         res.send(buffer);
 
     } catch (error) {
-        console.error("Image Generation Error:", error);
+        console.error("4K Agent Error:", error);
         res.status(500).send("Error generating image: " + error.message);
     }
 });
