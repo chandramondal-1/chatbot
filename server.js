@@ -106,18 +106,21 @@ app.get('/api/proxy/image', async (req, res) => {
             return res.status(response.status).json(data);
         }
 
-        // OpenRouter multimodal models return image data in the parts
-        const part = data.choices?.[0]?.message?.content?.parts?.find(p => p.inline_data || p.inlineData);
-        const imageData = part?.inline_data?.data || part?.inlineData?.data;
-        const mimeType = part?.inline_data?.mime_type || part?.inlineData?.mimeType || 'image/png';
+        // OpenRouter returns images in an array within the message object
+        const imageObj = data.choices?.[0]?.message?.images?.[0];
+        const imageUrl = imageObj?.image_url?.url || imageObj?.url;
 
-        if (!imageData) {
-            // Some models might return the image URL or the raw data differently
-            console.error("No image data found in response:", JSON.stringify(data));
+        if (!imageUrl) {
+            console.error("No image data found in OpenRouter response:", JSON.stringify(data));
             return res.status(500).json({ error: "No image data returned from AI" });
         }
 
-        const buffer = Buffer.from(imageData, 'base64');
+        // The URL is usually a data URL: data:image/png;base64,...
+        const base64Data = imageUrl.split(',')[1] || imageUrl;
+        const mimeTypeMatch = imageUrl.match(/^data:(image\/[a-z]+);base64,/);
+        const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/png';
+
+        const buffer = Buffer.from(base64Data, 'base64');
         res.setHeader('Content-Type', mimeType);
         res.send(buffer);
 
