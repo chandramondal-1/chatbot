@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
@@ -40,6 +44,14 @@
                     <select id="text-mode-select">
                         <option value="helpful">Helpful Mode</option>
                         <option value="coder">Coding Mode</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <select id="voice-select">
+                        <option value="nova">Nova (Default)</option>
+                        <option value="shimmer">Shimmer</option>
+                        <option value="echo">Echo</option>
+                        <option value="onyx">Onyx</option>
                     </select>
                 </div>
             </div>

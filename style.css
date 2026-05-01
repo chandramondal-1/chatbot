@@ -147,6 +147,33 @@ body {
     background: rgba(255, 255, 255, 0.1);
 }
 
+.history-actions {
+    display: none;
+    gap: 0.5rem;
+}
+
+.history-item:hover .history-actions {
+    display: flex;
+}
+
+.history-actions button {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0.2rem;
+    transition: color 0.2s;
+}
+
+.history-actions button:hover {
+    color: var(--text-main);
+}
+
+.history-actions .delete-chat:hover {
+    color: #ff4d4d;
+}
+
 .sidebar-footer {
     padding: 1rem;
     border-top: 1px solid var(--border-subtle);

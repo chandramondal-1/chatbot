@@ -54,6 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const modeBtns = document.querySelectorAll('.mode-pill');
     let currentAppMode = 'text'; // Default mode
     const modelSelect = document.querySelector('.model-selector select');
+    if (modelSelect) {
+        // modelSelect is defined but not currently used for logic
+    }
     
     // Auth Elements
     const authBtn = document.getElementById('auth-btn');
@@ -120,6 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 li.innerHTML = `
                     <i class="fa-regular fa-message" style="margin-right: 0.75rem; font-size: 0.8rem;"></i>
                     <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${chatData.title || 'New Chat'}</span>
+                    <div class="history-actions">
+                        <button class="rename-chat" title="Rename"><i class="fa-regular fa-pen-to-square"></i></button>
+                        <button class="delete-chat" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+                    </div>
                 `;
                 
                 li.addEventListener('click', (e) => {
@@ -127,15 +134,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     selectChat(chatId);
                 });
                 
-                li.querySelector('.delete-chat').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteChat(chatId);
-                });
+                const deleteBtn = li.querySelector('.delete-chat');
+                const renameBtn = li.querySelector('.rename-chat');
 
-                li.querySelector('.rename-chat').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    renameChat(chatId, chatData.title);
-                });
+                if (deleteBtn) {
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteChat(chatId);
+                    });
+                }
+
+                if (renameBtn) {
+                    renameBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        renameChat(chatId, chatData.title);
+                    });
+                }
                 
                 historyList.appendChild(li);
             });
@@ -211,9 +225,9 @@ document.addEventListener('DOMContentLoaded', () => {
             textMode: 'helpful',
             voice: 'nova'
         };
-        imageStyleSelect.value = settings.imageStyle;
-        textModeSelect.value = settings.textMode;
-        voiceSelect.value = settings.voice;
+        if (imageStyleSelect) imageStyleSelect.value = settings.imageStyle;
+        if (textModeSelect) textModeSelect.value = settings.textMode;
+        if (voiceSelect) voiceSelect.value = settings.voice;
         return settings;
     }
 
@@ -227,9 +241,9 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast("Settings updated!", "info");
     }
 
-    imageStyleSelect.addEventListener('change', saveSettings);
-    textModeSelect.addEventListener('change', saveSettings);
-    voiceSelect.addEventListener('change', saveSettings);
+    if (imageStyleSelect) imageStyleSelect.addEventListener('change', saveSettings);
+    if (textModeSelect) textModeSelect.addEventListener('change', saveSettings);
+    if (voiceSelect) voiceSelect.addEventListener('change', saveSettings);
 
     const currentSettings = loadSettings();
 
